@@ -184,7 +184,7 @@ void CFootBotDiffusion::ControlStep() {
    m_pcWifiSensor->GetReceivedMessages(t_incomingMsgs);
    for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++){
 	   receivedPackets++;
-	   std::cout <<  str_Me << " received: " << it->Payload << " from " << it->Sender << " (total received=)" << receivedPackets <<  std::endl;
+	   std::cout <<  str_Me << " received packet from " << it->Sender << " (total received=)" << receivedPackets <<  std::endl;
    }
 }
 
