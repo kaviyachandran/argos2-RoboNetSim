@@ -3,4 +3,5 @@ include_directories(${CMAKE_SOURCE_DIR}/controllers)
 add_subdirectory(navigation)
 add_subdirectory(footbot_central)
 add_subdirectory(footbot_navigator)
+add_subdirectory(footbot_navigator_robonetsim_example)
 

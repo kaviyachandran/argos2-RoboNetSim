@@ -30,7 +30,7 @@
     </footbot_central_controller>
 
     
-     <footbot_navigator id="fnav" 
+     <footbot_navigator_example id="fnav" 
      library="controllers/footbot_navigator/libfootbot_navigator.so">
     
       <actuators>
@@ -71,7 +71,7 @@
       </parameters>
 
     <!--</footbot_central_controller>-->
-    </footbot_navigator>
+    </footbot_navigator_example>
   </controllers>
 
   <!-- *********************** -->

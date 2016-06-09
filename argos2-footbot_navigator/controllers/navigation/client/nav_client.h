@@ -56,7 +56,7 @@ using namespace std;
 #include <argos2/common/utility/datatypes/datatypes.h>
 
 /// use waypoint lists instead of single waypoint for control
-//#define USE_WP_LIST
+#define USE_WP_LIST
 #ifdef USE_WP_LIST
 #include <navigation/lcm/timestamped_waypoint_list_handler.h>
 #endif
@@ -286,7 +286,7 @@ class RVONavClient
   void initLocalNavigation(TConfigurationNode& t_tree);
   void initGlobalNavigation(TConfigurationNode& t_tree);
   void initOdometry();
-#ifndef FOOTBOT_LQL_SIM
+#ifndef FOOTBOT_SIM
     static UInt64 getTime();
 #else
     UInt64 getTime();

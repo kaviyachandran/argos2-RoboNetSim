@@ -5,7 +5,7 @@
 #define STR_EXPAND(tok) #tok
 #define STR(tok) STR_EXPAND(tok)
 
-#define __USE_DEBUG_NAV 1
+#define __USE_DEBUG_NAV 0
 #define __USE_ERROR_NAV 1
 
 #if __USE_DEBUG_NAV
@@ -136,7 +136,7 @@ RVONavClient::robotId()
   bool 
 RVONavClient::isNodeValid( const Node &n )
 {
-#ifndef FOOTBOT_LQL_SIM
+#ifndef FOOTBOT_SIM
   UInt64 dt = getTime() - n.getTimestamp();
   return (dt < NODE_VALIDITY_THRESHOLD);
 #else
@@ -1269,7 +1269,7 @@ RVONavClient::updateVelocity()
 std::string
 RVONavClient::getTimeStr()
 {
-#ifndef FOOTBOT_LQL_SIM
+#ifndef FOOTBOT_SIM
   char buffer [80];
   timeval curTime;
   gettimeofday(&curTime, NULL);
@@ -1294,7 +1294,7 @@ RVONavClient::setTime(UInt64 ctime)
   UInt64 
 RVONavClient::getTime()
 {
-#ifndef FOOTBOT_LQL_SIM
+#ifndef FOOTBOT_SIM
   struct timeval timestamp;
   gettimeofday(&timestamp, NULL);
 

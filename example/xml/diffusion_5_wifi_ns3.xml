@@ -15,7 +15,6 @@
   <!-- * Controllers * -->
   <!-- *************** -->
   <controllers>
-
     <footbot_diffusion_controller id="fdc"
                                   library="build/controllers/footbot_diffusion/libfootbot_diffusion.so">
       <actuators>
