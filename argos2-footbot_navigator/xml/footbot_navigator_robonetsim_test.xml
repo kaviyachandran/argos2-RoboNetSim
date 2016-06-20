@@ -16,7 +16,7 @@
   <!-- *************** -->
   <controllers>
     <footbot_central_controller id="fcentral"
-      library="controllers/footbot_central/libfootbot_central_controller.so">
+      library="/home/kavya/RoboNetSim/argos2-RoboNetSim/argos2-footbot_navigator/build/controllers/footbot_central/libfootbot_central_controller.so">
       <actuators>
 
 	<footbot_wheels implementation="default" />
@@ -31,7 +31,7 @@
 
     
      <footbot_navigator id="fnav" 
-     library="controllers/footbot_navigator_robonetsim_example/libfootbot_navigator_robonetsim_example.so">
+     library="/home/kavya/RoboNetSim/argos2-RoboNetSim/argos2-footbot_navigator/build/controllers/footbot_navigator_robonetsim_example/libfootbot_navigator_robonetsim_example.so">
     
        <actuators>
 	 <wifi implementation="extern" />
