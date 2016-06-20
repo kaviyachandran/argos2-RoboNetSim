@@ -1,0 +1,31 @@
+
+*** INTRODUCTION ***
+
+In this package you'll find a controller that implements multi-robot
+collision avoidance and navigation
+
+
+
+
+*** COMPILATION ***
+
+
+$ mkdir build
+$ cd build
+
+To produce debuggable code (slow), type:
+
+$ cmake -DCMAKE_BUILD_TYPE=Debug ..
+
+To produce fast but not debuggable code, type:
+
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
+
+Finally, launch the compilation with the command:
+
+$ make
+
+If you find no error, you're ready to go to the next phase.
+
+
+
