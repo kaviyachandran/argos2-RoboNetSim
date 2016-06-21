@@ -1,3 +1,10 @@
+**** Map Actuator has the following ***
+footbot_beacon => 0x27af278
+footbot_leds => 0x27af318
+footbot_wheels => 0x27abda8
+wifi => 0x27aab78
+
+
 
 *** INTRODUCTION ***
 
