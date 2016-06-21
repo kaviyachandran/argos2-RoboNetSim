@@ -37,8 +37,10 @@ class FootbotDiffusionExample: public CCI_Controller
     UInt8 m_myID;
     RVONavClient *m_navClient;
 
-    //CCI_WiFiSensor* m_pcWifiSensor;
-    //CCI_WiFiActuator* m_pcWifiActuator;
+    CCI_WiFiSensor* m_pcWifiSensor;
+    CCI_WiFiActuator* m_pcWifiActuator;
+
+    //CCI_LEDsActuator* m_pcLEDs;
    
     
   public:
@@ -58,7 +60,7 @@ class FootbotDiffusionExample: public CCI_Controller
 
     static std::string getTimeStr();
     UInt64 getTime();
-    //void sendStringPacketTo(int dest, const string msg);
+    void sendStringPacketTo(int dest, const string msg);
     CVector3 randomWaypoint();
       
 
