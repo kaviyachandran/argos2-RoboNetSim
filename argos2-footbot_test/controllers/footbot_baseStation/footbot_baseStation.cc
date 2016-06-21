@@ -1,4 +1,4 @@
-#include "footbot_diffusion_example.h"
+#include "footbot_baseStation.h"
 
 
 #ifndef FOOTBOT_SIM
@@ -8,7 +8,7 @@
 #endif
 
 
-FootbotDiffusionExample::FootbotDiffusionExample() :
+FootbotBaseStation::FootbotBaseStation() :
   RandomSeed(12345),
   m_Steps(0),
   m_randomGen(0)
@@ -17,7 +17,7 @@ FootbotDiffusionExample::FootbotDiffusionExample() :
 
 
   void 
-FootbotDiffusionExample::Init(TConfigurationNode& t_node) 
+FootbotBaseStation::Init(TConfigurationNode& t_node) 
 {
   /// The first thing to do, set my ID
 #ifdef FOOTBOT_SIM
@@ -44,50 +44,49 @@ FootbotDiffusionExample::Init(TConfigurationNode& t_node)
   //////////////////////////////////////////////////////////////
   // Initialize things required by the communications
   //////////////////////////////////////////////////////////////
-  //m_pcWifiSensor = dynamic_cast<CCI_WiFiSensor* >(GetRobot().GetSensor("wifi"));
-  //m_pcWifiActuator = dynamic_cast<CCI_WiFiActuator* >(GetRobot().GetActuator("wifi"));
+  m_pcWifiSensor =   dynamic_cast<CCI_WiFiSensor*>(GetRobot().GetSensor("wifi"));
+  m_pcWifiActuator = dynamic_cast<CCI_WiFiActuator*>(GetRobot().GetActuator("wifi"));
+
+  m_pcLEDs   = dynamic_cast<CCI_FootBotLedsActuator*>(GetRobot().GetActuator("footbot_leds"));
    
   /// create the client and pass the configuration tree (XML) to it
   m_navClient = new RVONavClient(m_myID, GetRobot());
   m_navClient->init(t_node);
 
   /// start the navigation client
-  m_navClient->start();
+  //m_navClient->start();
+  
+  /// Sets color to all leds
+  m_pcLEDs->SetAllColors(CColor::RED);
+
+  /*mapActuators = (GetRobot().GetAllActuators());
+  
+  // show content:
+  for(itActuators = mapActuators.begin();
+          itActuators != mapActuators.end();
+          ++itActuators) 
+  std::cout << itActuators->first << " => " << itActuators->second << '\n'; */
 
 }
 
 
-/*void
-FootbotDiffusionExample::sendStringPacketTo(int dest, const string msg)
+void
+FootbotBaseStation::broadcastStringPacketTo(const string msg)
 {
-  std::ostringstream str(ostringstream::out);
+  std::ostringstream stringMessage(ostringstream::out);
   m_sendPackets++;
   std::ostringstream str_tmp(ostringstream::out);
-  str_tmp << "fb_" << dest;
-  string str_Dest = str_tmp.str();
+  //str_tmp << "fb_" << dest;
+  //string str_Dest = str_tmp.str();
   
-  str << "Hi I'm " << (int) m_myID << " and I say \"" << msg << "\" to " << str_Dest;
-  std::cout << str.str() << std::endl;
-  m_pcWifiActuator->SendMessageTo(str_Dest, str.str());
-}*/
-
-
-CVector3
-FootbotDiffusionExample::randomWaypoint()
-{
-  /// generate point in the square (1,5) x (1,5)
-  Real x = m_randomGen->Uniform(CRange<Real>(1,5));
-  Real y = m_randomGen->Uniform(CRange<Real>(1,5));
-  CVector3 random_point(x,y,0);
-  std::cout << "new random waypoint ("
-      << random_point.GetX()
-      << ", " <<  random_point.GetY()
-      << ")" << std::endl;
-  return random_point;
+  stringMessage << "Hi I'm " << (int) m_myID << " and I say \"" << msg ;
+  std::cout << stringMessage.str() << std::endl;
+  m_pcWifiActuator->BroadcastMessage(stringMessage.str());
 }
 
+
   void 
-FootbotDiffusionExample::ControlStep() 
+FootbotBaseStation::ControlStep() 
 {
   m_Steps+=1;
 
@@ -96,30 +95,12 @@ FootbotDiffusionExample::ControlStep()
   /// every two seconds
   if( m_Steps % 20 == 0)
     {
-      printf("Hello. I'm %d - my current position (%.2f, %.2f) \n",
-       (int) m_myID,
-       m_navClient->currentPosition().GetX(),
-       m_navClient->currentPosition().GetY());
-
       /// send network packet
-   /*   if( m_myID != 1)
-  {
-    printf("Hello. I'm %d - sending network packet\n", (int) m_myID);
-    sendStringPacketTo(1, "hello");
-  } */
-    }
+      printf("Hello. I'm %d - sending network packet\n", (int) m_myID);
+      broadcastStringPacketTo("hello I am base station");
 
-  if( m_Steps % 50 == 0 && m_Steps > 1)
-    {
-      CVector3 randomPoint = randomWaypoint();
-      m_navClient->setTargetPosition( randomPoint );
-      printf("Robot [%d] selected random point %.2f %.2f\n",
-       m_myID,
-       randomPoint.GetX(),
-       randomPoint.GetY());
-    }
-
-
+    } 
+  
  /* //searching for the received msgs
   TMessageList t_incomingMsgs;
   m_pcWifiSensor->GetReceivedMessages(t_incomingMsgs);
@@ -134,48 +115,32 @@ FootbotDiffusionExample::ControlStep()
   
   ///  must call this two methods from navClient in order to
   ///  update the navigation controller
+  m_pcLEDs->SetAllColors(CColor::RED);
   m_navClient->setTime(getTime());
   m_navClient->update();
 }
 
 
   void 
-FootbotDiffusionExample::Destroy() 
+FootbotBaseStation::Destroy() 
 {
-  DEBUG_CONTROLLER("FootbotDiffusionExample::Destroy (  )\n");
+  DEBUG_CONTROLLER("FootbotBaseStation::Destroy (  )\n");
 }
 
 /**************************************/
 
 bool 
-FootbotDiffusionExample::IsControllerFinished() const 
+FootbotBaseStation::IsControllerFinished() const 
 {
   return false;
 }
 
 
-std::string
-FootbotDiffusionExample::getTimeStr()
-{
-#ifndef FOOTBOT_SIM
-  char buffer [80];
-  timeval curTime;
-  gettimeofday(&curTime, NULL);
-  int milli = curTime.tv_usec / 1000;
-  strftime(buffer, 80, "%Y-%m-%d %H:%M:%S", localtime(&curTime.tv_sec));
-  char currentTime[84] = "";
-  sprintf(currentTime, "%s:%d", buffer, milli);
-  std::string ctime_str(currentTime);
-  return ctime_str;
-#else
-  return "mytime";
-#endif
-}
 
 
 /// returns time in milliseconds
   UInt64 
-FootbotDiffusionExample::getTime()
+FootbotBaseStation::getTime()
 {
 #ifndef FOOTBOT_SIM
   struct timeval timestamp;
@@ -195,4 +160,4 @@ FootbotDiffusionExample::getTime()
 
 
   
-REGISTER_CONTROLLER(FootbotDiffusionExample, "footbot_navigator")
+REGISTER_CONTROLLER(FootbotBaseStation, "footbot_baseStation_controller")

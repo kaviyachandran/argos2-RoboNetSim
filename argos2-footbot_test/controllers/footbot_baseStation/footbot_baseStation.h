@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <map>
 #include <argos2/common/control_interface/ci_controller.h>
 #include <argos2/common/utility/logging/argos_log.h>
 #include <argos2/common/utility/argos_random.h>
@@ -26,28 +27,32 @@ using namespace std;
 #include <argos2/common/utility/datatypes/datatypes.h>
 
 
-class FootbotDiffusionExample: public CCI_Controller
+class FootbotBaseStation: public CCI_Controller
 {
   private:
     UInt32 RandomSeed;
-    std::string m_MyIdStr;
+    //std::string m_MyIdStr;
     UInt64 m_Steps;
     CARGoSRandom::CRNG* m_randomGen;
     UInt64 m_sendPackets;
     UInt8 m_myID;
     RVONavClient *m_navClient;
 
-    //CCI_WiFiSensor* m_pcWifiSensor;
-    //CCI_WiFiActuator* m_pcWifiActuator;
-   
+    CCI_WiFiSensor* m_pcWifiSensor;
+    CCI_WiFiActuator* m_pcWifiActuator;
+    
+    CCI_FootBotLedsActuator* m_pcLEDs;
+
+    /*TActuatorMap::const_iterator itActuators;
+    TActuatorMap mapActuators; */
     
   public:
 
     /* Class constructor. */
-    FootbotDiffusionExample();
+    FootbotBaseStation();
 
     /* Class destructor. */
-    virtual ~FootbotDiffusionExample() {
+    virtual ~FootbotBaseStation() {
     }
 
     virtual void Init(TConfigurationNode& t_tree);
@@ -56,10 +61,9 @@ class FootbotDiffusionExample: public CCI_Controller
     virtual void Destroy();
     virtual bool IsControllerFinished() const;
 
-    static std::string getTimeStr();
     UInt64 getTime();
-    //void sendStringPacketTo(int dest, const string msg);
-    CVector3 randomWaypoint();
+    void broadcastStringPacketTo(const string msg);
+   
       
 
 };

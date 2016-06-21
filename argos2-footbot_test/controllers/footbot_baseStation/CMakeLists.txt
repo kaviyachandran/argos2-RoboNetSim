@@ -33,15 +33,15 @@ if( ARGOS_COMPILE_REAL_SWARMANOID )
     argos2_common_control_interface 
     argos2_common_utility
     lcm
-    navigation
+    #navigation
     )
 
 else( ARGOS_COMPILE_REAL_SWARMANOID )
   
   add_definitions(-DFOOTBOT_SIM)
   
-  include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav/client)
-  include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav)
+  #include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav/client)
+  #include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav)
   include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav/lcm)
   #link_directories(${CMAKE_BINARY_DIR}/lib/utils)
   
@@ -49,7 +49,8 @@ else( ARGOS_COMPILE_REAL_SWARMANOID )
   
   target_link_libraries(footbot_baseStation 
                         lcm 
-                        navigation)
+                        #navigation
+                        )
 
 endif( )
 
