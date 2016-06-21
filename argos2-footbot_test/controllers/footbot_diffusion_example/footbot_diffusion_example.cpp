@@ -44,8 +44,8 @@ FootbotDiffusionExample::Init(TConfigurationNode& t_node)
   //////////////////////////////////////////////////////////////
   // Initialize things required by the communications
   //////////////////////////////////////////////////////////////
-  //m_pcWifiSensor = dynamic_cast<CCI_WiFiSensor* >(GetRobot().GetSensor("wifi"));
-  //m_pcWifiActuator = dynamic_cast<CCI_WiFiActuator* >(GetRobot().GetActuator("wifi"));
+  m_pcWifiSensor = dynamic_cast<CCI_WiFiSensor* >(GetRobot().GetSensor("wifi"));
+  m_pcWifiActuator = dynamic_cast<CCI_WiFiActuator* >(GetRobot().GetActuator("wifi"));
    
   /// create the client and pass the configuration tree (XML) to it
   m_navClient = new RVONavClient(m_myID, GetRobot());
@@ -57,7 +57,7 @@ FootbotDiffusionExample::Init(TConfigurationNode& t_node)
 }
 
 
-/*void
+void
 FootbotDiffusionExample::sendStringPacketTo(int dest, const string msg)
 {
   std::ostringstream str(ostringstream::out);
@@ -69,7 +69,7 @@ FootbotDiffusionExample::sendStringPacketTo(int dest, const string msg)
   str << "Hi I'm " << (int) m_myID << " and I say \"" << msg << "\" to " << str_Dest;
   std::cout << str.str() << std::endl;
   m_pcWifiActuator->SendMessageTo(str_Dest, str.str());
-}*/
+}
 
 
 CVector3
@@ -102,11 +102,11 @@ FootbotDiffusionExample::ControlStep()
        m_navClient->currentPosition().GetY());
 
       /// send network packet
-   /*   if( m_myID != 1)
+     if( m_myID != 1)
   {
     printf("Hello. I'm %d - sending network packet\n", (int) m_myID);
     sendStringPacketTo(1, "hello");
-  } */
+  } 
     }
 
   if( m_Steps % 50 == 0 && m_Steps > 1)
@@ -120,7 +120,7 @@ FootbotDiffusionExample::ControlStep()
     }
 
 
- /* //searching for the received msgs
+ //searching for the received msgs
   TMessageList t_incomingMsgs;
   m_pcWifiSensor->GetReceivedMessages(t_incomingMsgs);
   for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
@@ -129,7 +129,7 @@ FootbotDiffusionExample::ControlStep()
         it->Payload.end());
       std::cout << "[" << (int) m_myID << "] Received packet: "
       << str_msg << std::endl;
-  } */
+  } 
 
   
   ///  must call this two methods from navClient in order to
