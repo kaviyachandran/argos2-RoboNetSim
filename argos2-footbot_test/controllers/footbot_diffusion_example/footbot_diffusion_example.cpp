@@ -46,6 +46,9 @@ FootbotDiffusionExample::Init(TConfigurationNode& t_node)
   //////////////////////////////////////////////////////////////
   m_pcWifiSensor = dynamic_cast<CCI_WiFiSensor* >(GetRobot().GetSensor("wifi"));
   m_pcWifiActuator = dynamic_cast<CCI_WiFiActuator* >(GetRobot().GetActuator("wifi"));
+
+  //Led actuator
+   m_pcLEDs   = dynamic_cast<CCI_FootBotLedsActuator*>(GetRobot().GetActuator("footbot_leds"));
    
   /// create the client and pass the configuration tree (XML) to it
   m_navClient = new RVONavClient(m_myID, GetRobot());
@@ -53,11 +56,12 @@ FootbotDiffusionExample::Init(TConfigurationNode& t_node)
 
   /// start the navigation client
   m_navClient->start();
+  m_pcLEDs->SetAllColors(CColor::GREEN);
 
 }
 
 
-void
+/*void
 FootbotDiffusionExample::sendStringPacketTo(int dest, const string msg)
 {
   std::ostringstream str(ostringstream::out);
@@ -69,8 +73,7 @@ FootbotDiffusionExample::sendStringPacketTo(int dest, const string msg)
   str << "Hi I'm " << (int) m_myID << " and I say \"" << msg << "\" to " << str_Dest;
   std::cout << str.str() << std::endl;
   m_pcWifiActuator->SendMessageTo(str_Dest, str.str());
-}
-
+}*/
 
 CVector3
 FootbotDiffusionExample::randomWaypoint()
@@ -79,10 +82,10 @@ FootbotDiffusionExample::randomWaypoint()
   Real x = m_randomGen->Uniform(CRange<Real>(1,5));
   Real y = m_randomGen->Uniform(CRange<Real>(1,5));
   CVector3 random_point(x,y,0);
-  std::cout << "new random waypoint ("
+ /* std::cout << "new random waypoint ("
       << random_point.GetX()
       << ", " <<  random_point.GetY()
-      << ")" << std::endl;
+      << ")" << std::endl;*/
   return random_point;
 }
 
@@ -104,8 +107,8 @@ FootbotDiffusionExample::ControlStep()
       /// send network packet
      if( m_myID != 1)
   {
-    printf("Hello. I'm %d - sending network packet\n", (int) m_myID);
-    sendStringPacketTo(1, "hello");
+    //printf("Hello. I'm %d - sending network packet\n", (int) m_myID);
+    //sendStringPacketTo(1, "hello");
   } 
     }
 
@@ -136,6 +139,7 @@ FootbotDiffusionExample::ControlStep()
   ///  update the navigation controller
   m_navClient->setTime(getTime());
   m_navClient->update();
+  m_pcLEDs->SetAllColors(CColor::GREEN);
 }
 
 

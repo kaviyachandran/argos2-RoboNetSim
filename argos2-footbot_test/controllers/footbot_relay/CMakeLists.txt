@@ -1,0 +1,56 @@
+set(footbot_relay_HEADERS  
+  footbot_relay.h
+  )
+
+set(footbot_relay_IMPLEMENTATIONS
+  footbot_relay.cc
+  )
+
+find_package(Boost 1.54 REQUIRED COMPONENTS filesystem iostreams)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories( ${CMAKE_SOURCE_DIR}/controllers)
+
+if( ARGOS_COMPILE_REAL_SWARMANOID )
+  include_directories(/usr/local/angstrom/arm/include/)
+  link_directories(
+    ${CMAKE_BINARY_DIR}/../../../common/swarmanoid/control_interface
+    ${CMAKE_BINARY_DIR}/../../../common/swarmanoid/utility
+    ${CMAKE_BINARY_DIR}/../../../real_robot/swarmanoid/common
+    ${CMAKE_BINARY_DIR}/../../../real_robot/swarmanoid/vision_robot/filtering
+    ${CMAKE_SOURCE_DIR}/../../real_robot/swarmanoid/opencv/lib
+    ${CMAKE_BINARY_DIR}/../../../real_robot/swarmanoid/footbot
+    )
+  add_executable(footbot_relay
+    ${footbot_relay_IMPLEMENTATIONS}
+    ${CMAKE_SOURCE_DIR}/main_functions/real_footbot_main.cpp
+    )
+
+  target_link_libraries(footbot_relay
+    argos2_real_robot_swarmanoid_footbot
+    argos2_real_robot_swarmanoid_common
+    argos2_common_control_interface 
+    argos2_common_utility
+    lcm
+    navigation
+    Boost::filesystem
+    Boost::iostreams
+    )
+
+else( ARGOS_COMPILE_REAL_SWARMANOID )
+
+  add_definitions(-DFOOTBOT_SIM)
+
+  include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav/client)
+  include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav)
+  include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav/lcm)
+ 
+  add_library(footbot_relay 
+    MODULE 
+    ${footbot_relay_IMPLEMENTATIONS})
+
+  target_link_libraries(footbot_relay lcm navigation)
+
+endif( )
+
+#test 2

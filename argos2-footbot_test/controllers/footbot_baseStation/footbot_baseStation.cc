@@ -66,12 +66,17 @@ FootbotBaseStation::Init(TConfigurationNode& t_node)
           itActuators != mapActuators.end();
           ++itActuators) 
   std::cout << itActuators->first << " => " << itActuators->second << '\n'; */
-
+ 
+//Real x = m_navClient->currentPosition().GetX();
+//Real y = m_navClient->currentPosition().GetY();
+//cout << "Position Base: "<< x << y;
+//CVector3 position(x,y,0);
+//broadcastStringPacket(position);
 }
 
 
 void
-FootbotBaseStation::broadcastStringPacketTo(const string msg)
+FootbotBaseStation::broadcastStringPacket(const CVector3& baseposition)
 {
   std::ostringstream stringMessage(ostringstream::out);
   m_sendPackets++;
@@ -79,11 +84,24 @@ FootbotBaseStation::broadcastStringPacketTo(const string msg)
   //str_tmp << "fb_" << dest;
   //string str_Dest = str_tmp.str();
   
-  stringMessage << "Hi I'm " << (int) m_myID << " and I say \"" << msg ;
+  stringMessage << "BaseStation : " << int(m_myID) << " Position : " << (Real)baseposition.GetX() << ","<<(Real)baseposition.GetY();
   std::cout << stringMessage.str() << std::endl;
   m_pcWifiActuator->BroadcastMessage(stringMessage.str());
 }
 
+void
+FootbotBaseStation::broadcastStringPacket(const string msg)
+{
+  std::ostringstream stringMessage(ostringstream::out);
+  m_sendPackets++;
+  std::ostringstream str_tmp(ostringstream::out);
+  //str_tmp << "fb_" << dest;
+  //string str_Dest = str_tmp.str();
+  
+  stringMessage << "BaseStation saying " << msg  ;
+  std::cout << stringMessage.str() << std::endl;
+  m_pcWifiActuator->BroadcastMessage(stringMessage.str());
+}
 
   void 
 FootbotBaseStation::ControlStep() 
@@ -94,23 +112,18 @@ FootbotBaseStation::ControlStep()
 
   /// every two seconds
   if( m_Steps % 20 == 0)
-    {
+    { 
+      Real x = m_navClient->currentPosition().GetX();
+      Real y = m_navClient->currentPosition().GetY();
+      cout << "Position Base: "<< x << y;
+      CVector3 position(x,y,0);
+      broadcastStringPacket(position);
       /// send network packet
-      printf("Hello. I'm %d - sending network packet\n", (int) m_myID);
-      broadcastStringPacketTo("hello I am base station");
-
+      //printf("Hello. I'm %d - sending network packet\n", (int) m_myID);
+      //broadcastStringPacket("hello I am base station");
+      
     } 
   
- /* //searching for the received msgs
-  TMessageList t_incomingMsgs;
-  m_pcWifiSensor->GetReceivedMessages(t_incomingMsgs);
-  for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
-    {
-      std::string str_msg(it->Payload.begin(),
-        it->Payload.end());
-      std::cout << "[" << (int) m_myID << "] Received packet: "
-      << str_msg << std::endl;
-  } */
 
   
   ///  must call this two methods from navClient in order to
