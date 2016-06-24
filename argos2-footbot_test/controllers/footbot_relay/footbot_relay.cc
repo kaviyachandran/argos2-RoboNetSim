@@ -59,7 +59,9 @@ FootbotRelay::Init(TConfigurationNode& t_node)
   /// create the client and pass the configuration tree (XML) to it
   m_navClient = new RVONavClient(m_myID, GetRobot());
   m_navClient->init(t_node);
+  /// start the navigation client
 
+      m_navClient->start(); 
  
   m_pcLEDs->SetAllColors(CColor::MAGENTA);
 
@@ -121,8 +123,8 @@ FootbotRelay::getWaypoint(positionMap& mapPos)
   void 
 FootbotRelay::ControlStep() 
 { 
-  Real x;
-  Real y;
+  float x;
+  float y;
   UInt8 id;
   m_Steps+=1;
   string message;
@@ -139,9 +141,10 @@ FootbotRelay::ControlStep()
     {
       std::string str_msg(it->Payload.begin(),
         it->Payload.end());
-
+       
     printf("enterign loop");
-    cout << str_msg << endl;
+     std::cout << "[" << (int) m_myID << "] Received packet: "
+      << str_msg << std::endl;
     message = str_msg;
     if(str_msg.find("BaseStation") != string::npos && mapPos.size() < NumberOfBaseStation)
       {  
@@ -162,31 +165,33 @@ FootbotRelay::ControlStep()
 
   stm << strVector[1] << " " << strVector[3] << " "<< strVector[4];
    stm >> id >> x >> y; 
+
+   cout << "after parsing : " << " " << strVector[1] << ":" << strVector[3] << "," << strVector[4] << endl;
+
+
    
-   CVector3 tempPos(x,y,0);
+   CVector3 tempPos(Real(x),Real(y),0);
    mapPos.insert(std::pair<int,CVector3 >(id,tempPos));
 
          //basePositions.insert(temp.begin(),temp.end());
-   cout << "Below are the base pos";
+  /* cout << "Below are the base pos";
    for(map<int, CVector3>::iterator itr = mapPos.begin(); itr != mapPos.end(); ++it)
    {
     CVector3 a = itr->second;
     cout<< a.GetX() << " " << a.GetY() << endl;
-   } 
+   } */
       }
       }
   //} 
 
  
-/*if(changePos && mapPos.size() == NumberOfBaseStation)
+if(changePos )
     { 
-      /// start the navigation client
-
-      m_navClient->start(); 
-      CVector3 targetPos = mapPos[mapCounter];
+      cout << "Setting target position : " << endl;
+      CVector3 targetPos(mapPos[mapCounter]);
       if(mapCounter == NumberOfBaseStation)
-        { mapCounter = mapCounter + 1; }
-
+        { mapCounter = 1; }
+      mapCounter = mapCounter + 1;
       m_navClient->setTargetPosition( targetPos );
       
       printf("Robot [%d] selected random point %.2f %.2f\n",
@@ -201,19 +206,8 @@ FootbotRelay::ControlStep()
  if (m_navClient->state() == target_state )
  {
    changePos = true;
-   m_navClient->stop();
+   //m_navClient->stop();
  }
-*/
- 
-   
- 
-
-  
-  ///  must call this two methods from navClient in order to
-  ///  update the navigation controller
-  m_navClient->setTime(getTime());
-  m_navClient->update();
-  m_pcLEDs->SetAllColors(CColor::MAGENTA);
 }
 
 
