@@ -38,7 +38,7 @@ FootbotRelay::Init(TConfigurationNode& t_node)
 
   /// Random
   GetNodeAttributeOrDefault(t_node, "RandomSeed", RandomSeed, RandomSeed);
-  //GetNodeAttributeOrDefault(t_node, "NumberOfBaseStation", NumberOfBaseStation, NumberOfBaseStation);
+  GetNodeAttributeOrDefault(t_node, "NumberOfBaseStation", NumberOfBaseStation, NumberOfBaseStation);
 
   if( m_randomGen == NULL )
     {
