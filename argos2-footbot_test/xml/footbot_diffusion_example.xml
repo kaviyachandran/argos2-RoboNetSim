@@ -90,12 +90,24 @@
         <footbot_leds implementation="default" />
         <footbot_beacon implementation="default" />
       </actuators>
+
       <sensors>
         <wifi implementation="extern" />
       </sensors>
+
       <parameters alpha="7.5" delta="0.001" velocity="0">
+        <mobilitycontrol mode="LCM" />
+
         <led_debugging leds="true" beacon="true" beacon_intensity="10"/>
+         <!-- Area bounds -->
+       <originAreaX>0.0</originAreaX>
+       <originAreaY>0.0</originAreaY>
+       <destinationAreaX>8.0</destinationAreaX>
+       <destinationAreaY>6.5</destinationAreaY>
+
       </parameters>
+
+
     </footbot_baseStation_controller>
     
      <!-- controller for the relay robot-->
@@ -137,14 +149,14 @@
        <led_debugging leds="true" beacon="true" beacon_intensity="10"/>
        <rab min_particle_separation="0.4" particle_age="5.0" min_particle_confidence="0.1"/>
   <!-- Min distance from the current position to the target position to determine it this is reached (meters)-->
-       <targetMinPointDistance>0.40</targetMinPointDistance>
+       <targetMinPointDistance>0.70</targetMinPointDistance>
   <!-- Area bounds -->
        <originAreaX>0.0</originAreaX>
        <originAreaY>0.0</originAreaY>
        <destinationAreaX>8.0</destinationAreaX>
        <destinationAreaY>6.5</destinationAreaY>
 
-       <!--NumberOfBaseStation>2</NumberOfBaseStation-->
+       <NumberOfBaseStation param="2"/>
     </parameters>
     </footbot_relay_controller>
   
