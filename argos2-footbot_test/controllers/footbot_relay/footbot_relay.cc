@@ -13,9 +13,10 @@ FootbotRelay::FootbotRelay() :
   m_Steps(0),
   m_randomGen(0),
   sep(" :,"),
-  mapCounter(1),
+  counter(0),
   NumberOfBaseStation(2),
-  changePos(true)
+  changePos(true),
+  target_state(STATE_ARRIVED_AT_TARGET)
 {
 }
 
@@ -60,14 +61,13 @@ FootbotRelay::Init(TConfigurationNode& t_node)
   m_navClient = new RVONavClient(m_myID, GetRobot());
   m_navClient->init(t_node);
   /// start the navigation client
-
-      m_navClient->start(); 
+  m_navClient->start(); 
  
   m_pcLEDs->SetAllColors(CColor::MAGENTA);
 
  }
 
-map<int, CVector3>& FootbotRelay::parseMessage(string msg)
+/*map<int, CVector3>& FootbotRelay::parseMessage(string msg)
 { 
   
   printf("in");
@@ -92,7 +92,7 @@ map<int, CVector3>& FootbotRelay::parseMessage(string msg)
    CVector3 tempPos(x,y,0);
    mapPos.insert(std::pair<int,CVector3 >(id,tempPos));
    return mapPos;
-}
+}*/
 
 /*void
 FootbotRelay::sendStringPacketTo(int dest, const string msg)
@@ -108,7 +108,7 @@ FootbotRelay::sendStringPacketTo(int dest, const string msg)
   m_pcWifiActuator->SendMessageTo(str_Dest, str.str());
 }*/
 
-CVector3
+/*CVector3
 FootbotRelay::getWaypoint(positionMap& mapPos)
 {
   /// generate point in the square (1,5) x (1,5)
@@ -116,16 +116,14 @@ FootbotRelay::getWaypoint(positionMap& mapPos)
   CVector3 target_point = mapPos[mapCounter];
   mapCounter = mapCounter + 1;
   if(mapCounter == NumberOfBaseStation)
-    mapCounter = 1;
+    mapCounter = 0;
   return target_point;
-} 
+} */
 
   void 
 FootbotRelay::ControlStep() 
 { 
-  float x;
-  float y;
-  UInt8 id;
+  
   m_Steps+=1;
   string message;
   /* do whatever */
@@ -139,6 +137,11 @@ FootbotRelay::ControlStep()
   /// Parsing received  message to get base station position
   for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
     {
+      Real x = 0.0;
+      Real y = 0.0;
+      int id = 0;
+      std::stringstream stm;
+
       std::string str_msg(it->Payload.begin(),
         it->Payload.end());
        
@@ -146,7 +149,7 @@ FootbotRelay::ControlStep()
      std::cout << "[" << (int) m_myID << "] Received packet: "
       << str_msg << std::endl;
     message = str_msg;
-    if(str_msg.find("BaseStation") != string::npos && mapPos.size() < NumberOfBaseStation)
+    if(str_msg.find("BaseStation") != string::npos && basestation_id.size() < NumberOfBaseStation)
       {  
          //printf("inside base station");
         // positionMap temp = parseMessage(message);
@@ -167,12 +170,24 @@ FootbotRelay::ControlStep()
    stm >> id >> x >> y; 
 
    cout << "after parsing : " << " " << strVector[1] << ":" << strVector[3] << "," << strVector[4] << endl;
-
-
+   cout << "values of var : " << " " << id << ":" << x << "," << y << endl;
+   strVector.clear();
+   UInt8 curr_size = basestation_id.size();
+   basestation_id.insert(id);
+   if(basestation_id.size() > curr_size)
+   {
+    CVector3 tempPos(x,y,0);
+    targetPos.push_back(tempPos);
+    cout << "after inserting" << endl;
    
-   CVector3 tempPos(Real(x),Real(y),0);
-   mapPos.insert(std::pair<int,CVector3 >(id,tempPos));
+    cout << tempPos.GetX() << " "<< tempPos.GetY() << endl;
+   }
+   
+   //targetPos = tempPos;
+    
+   
 
+  
          //basePositions.insert(temp.begin(),temp.end());
   /* cout << "Below are the base pos";
    for(map<int, CVector3>::iterator itr = mapPos.begin(); itr != mapPos.end(); ++it)
@@ -182,13 +197,45 @@ FootbotRelay::ControlStep()
    } */
       }
       }
-  //} 
+   
+
+ if(changePos && targetPos.size() > 0 )
+    { 
+      m_navClient->setTargetPosition( targetPos[counter] );
+      //CVector3 targetPos(mapPos[mapCounter]); 
+      if(counter == NumberOfBaseStation-1)
+        { counter = 0; }
+      else{
+        counter = counter + 1;
+      }
+      
+
+      CVector3 temp = targetPos[counter];
+      printf("Id [%d] Robot [%d] selected random point %.2f %.2f\n",
+       counter,
+       m_myID,
+       temp.GetX(),
+       temp.GetY() ); 
+      changePos = false;
+      cout << "state of the robot" <<  m_navClient->state() << endl;
+    } 
+ else if(m_navClient->state() == target_state )
+ {
+  cout << "inside" << endl;
+  changePos = true;
+ }
+
+  
 
  
-if(changePos )
+ 
+ //target_state = 3;
+ 
+ 
+/*if(changePos )
     { 
-      cout << "Setting target position : " << endl;
-      CVector3 targetPos(mapPos[mapCounter]);
+      
+      CVector3 targetPos(mapPos[mapCounter]); 
       if(mapCounter == NumberOfBaseStation)
         { mapCounter = 1; }
       mapCounter = mapCounter + 1;
@@ -200,14 +247,18 @@ if(changePos )
        targetPos.GetY()); 
       changePos = false;
     } 
-
+ 
 
  target_state = STATE_ARRIVED_AT_TARGET;
  if (m_navClient->state() == target_state )
  {
    changePos = true;
    //m_navClient->stop();
- }
+ } */
+
+  m_pcLEDs->SetAllColors(CColor::MAGENTA);
+  m_navClient->setTime(getTime());
+  m_navClient->update();
 }
 
 
