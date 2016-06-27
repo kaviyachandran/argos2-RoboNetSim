@@ -54,7 +54,7 @@ FootbotBaseStation::Init(TConfigurationNode& t_node)
   m_navClient->init(t_node);
 
   /// start the navigation client
-  //m_navClient->start();
+  m_navClient->start();
   
   /// Sets color to all leds
   m_pcLEDs->SetAllColors(CColor::RED);
