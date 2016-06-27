@@ -42,6 +42,7 @@ class FootbotRelay: public CCI_Controller
     CARGoSRandom::CRNG* m_randomGen;
     //UInt64 m_sendPackets;
     UInt8 m_myID;
+    
     RVONavClient *m_navClient;
     RobotNavState target_state;
     CCI_WiFiSensor* m_pcWifiSensor;
@@ -53,16 +54,14 @@ class FootbotRelay: public CCI_Controller
 
     vector<std::string> strVector;
     bool changePos;
-    typedef map<int, CVector3> positionMap;
-    positionMap basePositions;
-    positionMap mapPos;
+    set<UInt8> basestation_id;
 
     typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
     boost::char_separator<char> sep;
-    std::stringstream stm;
-    CVector3 targetPos;
+    
+    vector<CVector3> targetPos;
     CVector3 position;
-    UInt8 mapCounter;
+    UInt8 counter;
     
   public:
 
@@ -83,8 +82,8 @@ class FootbotRelay: public CCI_Controller
     UInt64 getTime();
     
     //void sendStringPacketTo(int dest, const string msg);
-    CVector3 getWaypoint(positionMap& mapP);
-    map<int, CVector3>& parseMessage(string str_msg);
+    //CVector3 getWaypoint(positionMap& mapP);
+    //map<int, CVector3>& parseMessage(string str_msg);
 
 };
 
