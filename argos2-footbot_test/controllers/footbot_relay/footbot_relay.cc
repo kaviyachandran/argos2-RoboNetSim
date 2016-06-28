@@ -8,6 +8,23 @@
 #endif
 
 
+#define MAX_UDP_SOCKET_BUFFER_SIZE 1500
+
+#define __USE_DEBUG_COMM 1
+#if __USE_DEBUG_COMM
+#define DEBUGCOMM(m, ...) \
+{\
+  fprintf(stderr, "%.2f DEBUGCOMM[%d]: " m,\
+	  (float) m_Steps,\
+	  (int) m_myID, \
+          ## __VA_ARGS__);\
+  fflush(stderr);\
+}
+#else
+#define DEBUGCOMM(m, ...)
+#endif
+
+
 FootbotRelay::FootbotRelay() :
   RandomSeed(12345),
   m_Steps(0),
@@ -54,6 +71,9 @@ FootbotRelay::Init(TConfigurationNode& t_node)
   m_pcWifiSensor = dynamic_cast<CCI_WiFiSensor* >(GetRobot().GetSensor("wifi"));
   m_pcWifiActuator = dynamic_cast<CCI_WiFiActuator* >(GetRobot().GetActuator("wifi"));
 
+  //  m_pcWifiSensorLongRange = dynamic_cast<CCI_WiFiSensor* >(GetRobot().GetSensor("wifilongrange"));
+  //  m_pcWifiActuatorLongRange = dynamic_cast<CCI_WiFiActuator* >(GetRobot().GetActuator("wifilongrange"));
+
   //Led actuator
    m_pcLEDs   = dynamic_cast<CCI_FootBotLedsActuator*>(GetRobot().GetActuator("footbot_leds"));
    
@@ -65,6 +85,7 @@ FootbotRelay::Init(TConfigurationNode& t_node)
  
   m_pcLEDs->SetAllColors(CColor::MAGENTA);
 
+  m_incomingMsg = new char[MAX_UDP_SOCKET_BUFFER_SIZE];
  }
 
 /*map<int, CVector3>& FootbotRelay::parseMessage(string msg)
@@ -120,6 +141,22 @@ FootbotRelay::getWaypoint(positionMap& mapPos)
   return target_point;
 } */
 
+void
+FootbotRelay::parseMsg(size_t len)
+{
+  uint32_t bcnt = 0;
+  char *cntptr = m_incomingMsg;
+  /// read id (1)
+  /// #1:  id  - uint8_t
+  uint8_t robot_id;
+  memcpy(&robot_id, cntptr, sizeof(robot_id));
+  cntptr += sizeof(robot_id);
+  bcnt += sizeof(robot_id);
+  DEBUGCOMM("Read id %d from msg\n", robot_id);
+
+  
+}
+
   void 
 FootbotRelay::ControlStep() 
 { 
@@ -132,11 +169,23 @@ FootbotRelay::ControlStep()
   //{  
       //searching for the received msgs
   TMessageList t_incomingMsgs;
+
   m_pcWifiSensor->GetReceivedMessages(t_incomingMsgs);
+  for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
+    {
+      /// parse msg
+      std::copy(it->Payload.begin(),it->Payload.end() , m_incomingMsg);
+      DEBUGCOMM("Copied %d bytes to incoming buffer\n", it->Payload.size());
+      parseMsg(it->Payload.size());
+    }
+  
+  
+  #if 0
+  m_pcWifiSensorLongRange->GetReceivedMessages(t_incomingMsgs);
 
   /// Parsing received  message to get base station position
   for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
-    {
+    {      
       Real x = 0.0;
       Real y = 0.0;
       int id = 0;
@@ -145,9 +194,7 @@ FootbotRelay::ControlStep()
       std::string str_msg(it->Payload.begin(),
         it->Payload.end());
        
-    printf("enterign loop");
-     std::cout << "[" << (int) m_myID << "] Received packet: "
-      << str_msg << std::endl;
+     std::cout << "[" << (int) m_myID << "] Received packet " << std::endl;
     message = str_msg;
     if(str_msg.find("BaseStation") != string::npos && basestation_id.size() < NumberOfBaseStation)
       {  
@@ -198,7 +245,7 @@ FootbotRelay::ControlStep()
       }
       }
    
-
+#endif
  if(changePos && targetPos.size() > 0 )
     { 
       m_navClient->setTargetPosition( targetPos[counter] );

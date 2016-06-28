@@ -8,6 +8,21 @@
 #endif
 
 
+#define __USE_DEBUG_COMM 1
+#if __USE_DEBUG_COMM
+#define DEBUGCOMM(m, ...) \
+{\
+  fprintf(stderr, "%.2f DEBUGCOMM[%d]: " m,\
+	  (float) m_Steps,\
+	  (int) m_myID, \
+          ## __VA_ARGS__);\
+  fflush(stderr);\
+}
+#else
+#define DEBUGCOMM(m, ...)
+#endif
+
+
 FootbotDiffusionExample::FootbotDiffusionExample() :
   RandomSeed(12345),
   m_Steps(0),
@@ -58,6 +73,9 @@ FootbotDiffusionExample::Init(TConfigurationNode& t_node)
   m_navClient->start();
   m_pcLEDs->SetAllColors(CColor::GREEN);
 
+  /// initialize buffer
+  m_socketMsg = new char[MAX_UDP_SOCKET_BUFFER_SIZE];
+
 }
 
 
@@ -74,6 +92,70 @@ FootbotDiffusionExample::sendStringPacketTo(int dest, const string msg)
   std::cout << str.str() << std::endl;
   m_pcWifiActuator->SendMessageTo(str_Dest, str.str());
 }*/
+
+
+/// fills the buffer with a new msg content,
+/// taking into account the current packet size
+/// valid for both simulation and real
+size_t
+FootbotDiffusionExample::makeProfileMsg()
+{
+  uint32_t bcnt = 0;
+  char *cntptr = m_socketMsg;
+  /// put id (1)
+  /// #1:  id  - uint8_t
+  uint8_t robot_id = (uint8_t) m_myID;
+  /// copy to the buffer
+  memcpy(cntptr, &robot_id, sizeof(robot_id));
+  cntptr += sizeof(robot_id);
+  bcnt += sizeof(robot_id);
+  
+  /// put timestamp (8)
+  /// #2: timestamp - uint64_t
+  uint64_t tstamp = getTime();
+  memcpy(cntptr, &tstamp, sizeof(tstamp));
+  cntptr += sizeof(tstamp);
+  bcnt += sizeof(tstamp);
+  
+  /// put position (x,y) (16)
+  /// #3: x, y : double, double 
+  double nx = (double) m_navClient->currentPosition().GetX();
+  double ny = (double) m_navClient->currentPosition().GetY();
+  memcpy(cntptr,&nx, sizeof(nx));
+  cntptr += sizeof(nx);
+  bcnt += sizeof(nx);
+  memcpy(cntptr,&ny, sizeof(ny));
+  cntptr += sizeof(ny);
+  bcnt += sizeof(ny);
+
+  /// put timestamp (8)
+  /// #4: timestamp - uint64_t
+  uint64_t tlasttransmission = m_lastTxTime;
+  memcpy(cntptr, &tlasttransmission, sizeof(tlasttransmission));
+  cntptr += sizeof(tlasttransmission);
+  bcnt += sizeof(tlasttransmission);
+  m_lastTxTime = getTime();
+
+  /// put numberofneighbors (1)
+  /// #5: n_neighbors: uint8_t
+  uint8_t n_neigh = getNumberOfNeighbors();
+  memcpy(cntptr, &n_neigh, sizeof(n_neigh));
+  cntptr += sizeof(n_neigh);
+  bcnt += sizeof(n_neigh);
+
+  *cntptr = '\0';
+  cntptr+=1;
+  bcnt+=1;
+  
+  DEBUGCOMM("Composed MSG of size %d\n", bcnt);
+  return (size_t)bcnt;
+}
+
+UInt8
+FootbotDiffusionExample::getNumberOfNeighbors()
+{
+  return 0;
+}
 
 CVector3
 FootbotDiffusionExample::randomWaypoint()
@@ -99,6 +181,14 @@ FootbotDiffusionExample::ControlStep()
   /// every two seconds
   if( m_Steps % 20 == 0)
     {
+
+      size_t psize = makeProfileMsg();
+      DEBUGCOMM("Sending MSG of size %d\n", 
+		psize); 
+	  m_pcWifiActuator->SendBinaryMessageTo("-1",
+						(char*)m_socketMsg,
+						psize);
+
       printf("Hello. I'm %d - my current position (%.2f, %.2f) \n",
        (int) m_myID,
        m_navClient->currentPosition().GetX(),

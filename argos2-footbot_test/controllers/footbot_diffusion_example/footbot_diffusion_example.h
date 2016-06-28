@@ -25,6 +25,7 @@ using namespace std;
 
 #include <argos2/common/utility/datatypes/datatypes.h>
 
+#define MAX_UDP_SOCKET_BUFFER_SIZE 1500
 
 class FootbotDiffusionExample: public CCI_Controller
 {
@@ -41,6 +42,14 @@ class FootbotDiffusionExample: public CCI_Controller
     CCI_WiFiActuator* m_pcWifiActuator;
 
     CCI_FootBotLedsActuator* m_pcLEDs;
+
+    //  msg buffer
+    char *m_socketMsg;
+    uint64_t m_lastTxTime;
+
+    UInt8 getNumberOfNeighbors();
+
+    size_t makeProfileMsg();
 
    
     

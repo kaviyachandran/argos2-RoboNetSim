@@ -48,6 +48,9 @@ class FootbotRelay: public CCI_Controller
     CCI_WiFiSensor* m_pcWifiSensor;
     CCI_WiFiActuator* m_pcWifiActuator;
 
+    CCI_WiFiSensor* m_pcWifiSensorLongRange;
+    CCI_WiFiActuator* m_pcWifiActuatorLongRange;
+    
     CCI_FootBotLedsActuator* m_pcLEDs;
 
     UInt8 NumberOfBaseStation;
@@ -62,6 +65,8 @@ class FootbotRelay: public CCI_Controller
     vector<CVector3> targetPos;
     CVector3 position;
     UInt8 counter;
+    char *m_incomingMsg;
+    void parseMsg(size_t );
     
   public:
 

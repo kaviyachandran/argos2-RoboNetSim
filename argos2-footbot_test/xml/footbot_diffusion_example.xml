@@ -18,7 +18,7 @@
 
     <!-- controller for the virtual robot-->
     <footbot_central_controller id="fcentral"
-      library="/home/kavya/RoboNetSim/argos2-RoboNetSim/argos2-footbot_test/build/controllers/footbot_central/libfootbot_central_controller.so">
+      library="build/controllers/footbot_central/libfootbot_central_controller.so">
       <actuators>
 
 	     <footbot_wheels implementation="default" />
@@ -33,7 +33,7 @@
 
     <!-- controller for the mission robot-->
      <footbot_navigator id="fnav" 
-     library="/home/kavya/RoboNetSim/argos2-RoboNetSim/argos2-footbot_test/build/controllers/footbot_diffusion_example/libfootbot_diffusion_example.so">
+     library="build/controllers/footbot_diffusion_example/libfootbot_diffusion_example.so">
     
        <actuators>
   	      <wifi implementation="extern" />
@@ -82,7 +82,7 @@
     <!-- controller for baseStation-->
     
     <footbot_baseStation_controller id="fbase" 
-     library="/home/kavya/RoboNetSim/argos2-RoboNetSim/argos2-footbot_test/build/controllers/footbot_baseStation/libfootbot_baseStation.so">
+     library="build/controllers/footbot_baseStation/libfootbot_baseStation.so">
 
       <actuators>
         <wifi implementation="extern" />
@@ -112,10 +112,11 @@
     
      <!-- controller for the relay robot-->
     <footbot_relay_controller id="frelay" 
-     library="/home/kavya/RoboNetSim/argos2-RoboNetSim/argos2-footbot_test/build/controllers/footbot_relay/libfootbot_relay.so">
+     library="build/controllers/footbot_relay/libfootbot_relay.so">
     
        <actuators>
-        <wifi implementation="extern" />
+         <wifi implementation="extern" />
+	 <!--<wifi implementation="default" /> -->
         <footbot_wheels implementation="default" />
         <footbot_leds   implementation="default" />
         <footbot_beacon   implementation="default" />
@@ -123,6 +124,7 @@
 
       <sensors>
         <wifi implementation="extern" />
+	<!-- <wifi implementation="default" /> -->
         <footbot_proximity implementation="rot_z_only" 
          show_rays="true" calibrate="true" />
         <footbot_encoder implementation="default"/>
