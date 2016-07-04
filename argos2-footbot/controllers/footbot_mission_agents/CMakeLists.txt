@@ -1,16 +1,15 @@
-set(footbot_relay_HEADERS  
-  footbot_relay.h
+set(footbot_mission_agents_HEADERS  
+  footbot_mission_agents.h
   )
 
-set(footbot_relay_IMPLEMENTATIONS
-  footbot_relay.cc
+set(footbot_mission_agents_IMPLEMENTATIONS
+  footbot_mission_agents.cpp
   )
 
-find_package(Boost 1.54 REQUIRED COMPONENTS filesystem iostreams)
-
+#include_directories(${CMAKE_CURRENT_SOURCE_DIR}/navigation/lcm)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories( ${CMAKE_SOURCE_DIR}/controllers)
-
+#include_directories( ${CMAKE_SOURCE_DIR}/controllers/rvo_nav/client)
 if( ARGOS_COMPILE_REAL_SWARMANOID )
   include_directories(/usr/local/angstrom/arm/include/)
   link_directories(
@@ -21,35 +20,34 @@ if( ARGOS_COMPILE_REAL_SWARMANOID )
     ${CMAKE_SOURCE_DIR}/../../real_robot/swarmanoid/opencv/lib
     ${CMAKE_BINARY_DIR}/../../../real_robot/swarmanoid/footbot
     )
-  add_executable(footbot_relay
-    ${footbot_relay_IMPLEMENTATIONS}
+  add_executable(footbot_diffusion_example
+    ${footbot_diffusion_example_IMPLEMENTATIONS}
     ${CMAKE_SOURCE_DIR}/main_functions/real_footbot_main.cpp
     )
 
-  target_link_libraries(footbot_relay
+  #ADD_LIBRARY(lcm_static STATIC IMPORTED)
+  #SET_TARGET_PROPERTIES(lcm_static PROPERTIES 
+  #IMPORTED_LOCATION /usr/local/angstrom/arm/arm-angstrom-linux-gnuea/lib/liblcm.la)
+
+  target_link_libraries(footbot_diffusion_example 
     argos2_real_robot_swarmanoid_footbot
     argos2_real_robot_swarmanoid_common
     argos2_common_control_interface 
     argos2_common_utility
     lcm
     navigation
-    Boost::filesystem
-    Boost::iostreams
     )
 
 else( ARGOS_COMPILE_REAL_SWARMANOID )
-
   add_definitions(-DFOOTBOT_SIM)
-
   include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav/client)
   include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav)
   include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav/lcm)
- 
-  add_library(footbot_relay 
+  #link_directories(${CMAKE_BINARY_DIR}/lib/utils)
+  add_library(footbot_diffusion_example 
     MODULE 
-    ${footbot_relay_IMPLEMENTATIONS})
-
-  target_link_libraries(footbot_relay lcm navigation)
+    ${footbot_diffusion_example_IMPLEMENTATIONS})
+  target_link_libraries(footbot_diffusion_example lcm navigation)
 
 endif( )
 

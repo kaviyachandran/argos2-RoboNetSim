@@ -31,7 +31,7 @@ class FootbotBaseStation: public CCI_Controller
 {
   private:
     UInt32 RandomSeed;
-    //std::string m_MyIdStr;
+    
     UInt64 m_Steps;
     CARGoSRandom::CRNG* m_randomGen;
     UInt64 m_sendPackets;
@@ -43,10 +43,7 @@ class FootbotBaseStation: public CCI_Controller
     
     CCI_FootBotLedsActuator* m_pcLEDs;
 
-    //CVector3 position;
-
-    /*TActuatorMap::const_iterator itActuators;
-    TActuatorMap mapActuators; */
+  
     
   public:
 
@@ -65,10 +62,7 @@ class FootbotBaseStation: public CCI_Controller
 
     UInt64 getTime();
     void broadcastStringPacket(const CVector3& position);
-    void broadcastStringPacket(const string msg);
-   
-      
-
+    
 };
 
 #endif

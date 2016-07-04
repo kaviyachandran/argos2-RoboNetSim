@@ -86,22 +86,9 @@ FootbotBaseStation::broadcastStringPacket(const CVector3& baseposition)
   
   stringMessage << "BaseStation : " << int(m_myID) << " Position : " << (Real)baseposition.GetX() << ","<<(Real)baseposition.GetY();
   std::cout << stringMessage.str() << std::endl;
-  m_pcWifiActuator->BroadcastMessage(stringMessage.str());
+ // m_pcWifiActuator->BroadcastMessage(stringMessage.str());
 }
 
-void
-FootbotBaseStation::broadcastStringPacket(const string msg)
-{
-  std::ostringstream stringMessage(ostringstream::out);
-  m_sendPackets++;
-  std::ostringstream str_tmp(ostringstream::out);
-  //str_tmp << "fb_" << dest;
-  //string str_Dest = str_tmp.str();
-  
-  stringMessage << "BaseStation saying " << msg  ;
-  std::cout << stringMessage.str() << std::endl;
-  m_pcWifiActuator->BroadcastMessage(stringMessage.str());
-}
 
   void 
 FootbotBaseStation::ControlStep() 

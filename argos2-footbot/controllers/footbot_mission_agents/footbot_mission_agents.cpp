@@ -102,6 +102,16 @@ FootbotDiffusionExample::makeProfileMsg()
 {
   uint32_t bcnt = 0;
   char *cntptr = m_socketMsg;
+
+  /// put identifier (1)
+  /// #6: identifier - 0 (Mission Agent), 1 (Relay)
+  /// Identifier is used to find the source of message 
+
+  uint8_t identifier = 0;
+  memcpy(cntptr, &identifier, sizeof(identifier));
+  cntptr = cntptr + sizeof(identifier);
+  bcnt = bcnt + sizeof(identifier);
+
   /// put id (1)
   /// #1:  id  - uint8_t
   uint8_t robot_id = (uint8_t) m_myID;
@@ -142,6 +152,8 @@ FootbotDiffusionExample::makeProfileMsg()
   memcpy(cntptr, &n_neigh, sizeof(n_neigh));
   cntptr += sizeof(n_neigh);
   bcnt += sizeof(n_neigh);
+  
+  
 
   *cntptr = '\0';
   cntptr+=1;
@@ -181,7 +193,7 @@ FootbotDiffusionExample::ControlStep()
   /// every two seconds
   if( m_Steps % 20 == 0)
     {
-
+  /// This profile message is sent to relay robots using short communication range 
       size_t psize = makeProfileMsg();
       DEBUGCOMM("Sending MSG of size %d\n", 
 		psize); 
@@ -289,5 +301,5 @@ FootbotDiffusionExample::getTime()
 
 
   
-REGISTER_CONTROLLER(FootbotDiffusionExample, "footbot_navigator")
+REGISTER_CONTROLLER(FootbotMissionAgents, "footbot_mission_agent_controller")
 

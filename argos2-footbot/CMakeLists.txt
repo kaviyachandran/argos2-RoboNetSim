@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
-project(argos2_footbot_test)
+project(argos2_footbot)
 
 # Find the ARGoS package
 set(CMAKE_MODULE_PATH /usr/share/argos2 ${CMAKE_SOURCE_DIR}/cmake)
