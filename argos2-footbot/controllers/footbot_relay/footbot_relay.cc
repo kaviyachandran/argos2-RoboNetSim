@@ -30,13 +30,12 @@ FootbotRelay::FootbotRelay() :
 	m_Steps(0),
 	m_randomGen(0),
 	sep(" :,"),
-	counter(0),
+	counter(1),
 	NumberOfBaseStation(2),
 	changePos(true),
 	target_state(STATE_ARRIVED_AT_TARGET)
 {
 }
-
 
 
 
@@ -56,7 +55,18 @@ FootbotRelay::Init(TConfigurationNode& t_node)
 	/// Random
 	GetNodeAttributeOrDefault(t_node, "RandomSeed", RandomSeed, RandomSeed);
 	GetNodeAttributeOrDefault(t_node, "NumberOfBaseStation", NumberOfBaseStation, NumberOfBaseStation);
-
+	
+	/// Stores Base Station positions
+	for (size_t i=1; i <= NumberOfBaseStation ; i++)
+	{
+	  string str = "BaseStation" + to_string(i);
+		TConfigurationNode node = GetNode(t_node, str);	
+		
+		vector<double> basePos = getBaseStationPositions(node);
+		baseStationPosition.insert(pair<uint8_t, vector<double> >(i,basePos));
+ 		
+	}
+  
 	if( m_randomGen == NULL )
 		{
 			CARGoSRandom::CreateCategory("rwp",
@@ -89,48 +99,72 @@ FootbotRelay::Init(TConfigurationNode& t_node)
 	m_incomingMsg = new char[MAX_UDP_SOCKET_BUFFER_SIZE];
  }
 
+
+vector<double>
+FootbotRelay::getBaseStationPositions(TConfigurationNode node)
+{ 
+	vector<double> pos;
+	string temp;
+	GetNodeAttribute(node, "x", temp);
+	pos.push_back(stod(temp));
+	GetNodeAttribute(node, "y", temp);
+	pos.push_back(stod(temp));
+	return pos;
+}
+
+
+
 uint8_t FootbotRelay::getNeighbourInfo()
 {
 	return 0;
 }
 
 size_t FootbotRelay::createProfileMessage()
-{
+{ 
+	uint32_t messageSize = 0;
+  char *outptr = m_socketMsg;
+  
+  /// Identifier message source
+	uint8_t identifier = 1;
+  memcpy(outptr, &identifier, sizeof(identifier));
+  outptr = outptr + sizeof(identifier);
+  messageSize = messageSize + sizeof(identifier);
+
 	/// Id of relay
 	/// Id - uint8_t
-	uint8_t relay_id = m_myID;
-	memcpy(m_socketMsg, &relay_id, sizeof(relay_id));
-	m_socketMsg = m_socketMsg + sizeof(relay_id);
+	uint8_t relay_id = (uint8_t) m_myID;
+	memcpy(outptr, &relay_id, sizeof(relay_id));
+	outptr = outptr + sizeof(relay_id);
 	messageSize = messageSize + sizeof(relay_id);
 
 	/// Current time - uint64
 	uint64_t currTimestamp = getTime();
-	memcpy(m_socketMsg, &currTimestamp, sizeof(currTimestamp));
-	m_socketMsg = m_socketMsg + sizeof(currTimestamp);
+	memcpy(outptr, &currTimestamp, sizeof(currTimestamp));
+	outptr = outptr + sizeof(currTimestamp);
 	messageSize = messageSize + sizeof(currTimestamp);
 
 	/// Relay Position - (x,y in double)
 	double relay_x = (double) m_navClient->currentPosition().GetX();
 	double relay_y = (double) m_navClient->currentPosition().GetY();
-	memcpy(m_socketMsg, &relay_x, sizeof(relay_x));
-	m_socketMsg = m_socketMsg + sizeof(relay_x);
+	memcpy(outptr, &relay_x, sizeof(relay_x));
+	outptr = outptr + sizeof(relay_x);
 	messageSize = messageSize + sizeof(relay_x);
 
-	memcpy(m_socketMsg, &relay_y, sizeof(relay_y));
-	m_socketMsg = m_socketMsg + sizeof(relay_y);
+	memcpy(outptr, &relay_y, sizeof(relay_y));
+	outptr = outptr + sizeof(relay_y);
 	messageSize = messageSize + sizeof(relay_y);
 
 	/// Know Neighbour Info
 	/// Later -- > Map(NeighId, NeighPos)
-	uint8_t neighbourId = getNeighbourInfo();
-	memcpy(m_socketMsg, &neighbourId, sizeof(neighbourId));
-	m_socketMsg = m_socketMsg + sizeof(neighbourId);
-	messageSize = messageSize + sizeof(neighbourId);
+	//uint8_t neighbourId = getNeighbourInfo();
+	memcpy(outptr, &neighbourRelay, sizeof(neighbourRelay));
+	outptr = outptr + sizeof(neighbourRelay);
+	messageSize = messageSize + sizeof(neighbourRelay); 
 	
 	///current target base station - uint8
 	targetBaseStation = 1;
-	memcpy(m_socketMsg, &neighbourId, sizeof(targetBaseStation));
-	m_socketMsg = m_socketMsg + sizeof(targetBaseStation);
+	memcpy(outptr, &targetBaseStation, sizeof(targetBaseStation));
+	outptr = outptr + sizeof(targetBaseStation);
 	messageSize = messageSize + sizeof(targetBaseStation);
 	
 	/// last service information
@@ -140,12 +174,12 @@ size_t FootbotRelay::createProfileMessage()
 	/// position where it starts for the next target i.e the positon where it is considered to meet the last BS 
 	lastserviceInfo.initialX = 0.0;
 	lastserviceInfo.initialY = 0.0;
-	memcpy(m_socketMsg, &lastserviceInfo, sizeof(lastserviceInfo));
-	m_socketMsg = m_socketMsg + sizeof(lastserviceInfo);
-	messageSize = messageSize + sizeof(lastserviceInfo);
+	memcpy(outptr, &lastserviceInfo, sizeof(lastserviceInfo));
+	outptr = outptr + sizeof(lastserviceInfo);
+	messageSize = messageSize + sizeof(lastserviceInfo); 
 
-	*m_socketMsg = '\0';
-	 m_socketMsg = m_socketMsg + 1;
+	*outptr = '\0';
+	 outptr = outptr + 1;
 	 messageSize = messageSize + 1;
 	 return size_t(messageSize);
 }
@@ -198,10 +232,10 @@ FootbotRelay::parseMessage(size_t len)
       
       /// check if neighbour id is already present
       /// update if it is present else insert
-      NeighbourMap::iterator itr = relay_neighbour.find(received_robot_id);
-      if ( itr == relay_neighbour.end() ) 
+      NeighbourMap::iterator itr = neighbourRobot.find(received_robot_id);
+      if ( itr == neighbourRobot.end() ) 
       {
-      	relay_neighbour.insert(pair<uint8_t, vector<double> >(received_robot_id,temp_robot_position));
+      	neighbourRobot.insert(pair<uint8_t, vector<double> >(received_robot_id,temp_robot_position));
   			
 			} 
 			else 
@@ -255,13 +289,25 @@ FootbotRelay::parseMessage(size_t len)
 			memcpy(&r_y, cntptr, sizeof(r_y));
 			cntptr = cntptr + sizeof(r_y);
 			bcnt = bcnt + sizeof(r_y);
-
+      
+      vector<double> temp_robot_position {r_x,r_y};
+      /// check if neighbour id is already present
+      /// update if it is present else insert
+      NeighbourMap::iterator itr = neighbourRelay.find(received_relay_id);
+      if ( itr == neighbourRelay.end() ) 
+      {
+      	neighbourRelay.insert(pair<uint8_t, vector<double> >(received_relay_id,temp_robot_position));
+  		} 
+			else 
+			{
+  			itr->second = temp_robot_position;
+			}
 			///read neighbour info (4)
 			
-			uint64_t r_neighbour_info;
-			memcpy(&r_neighbour_info, cntptr, sizeof(r_neighbour_info));
-			cntptr = cntptr + sizeof(r_neighbour_info);
-			bcnt = bcnt + sizeof(r_neighbour_info);
+			//uint64_t r_neighbour_info;
+			memcpy(&received_neighbour_info, cntptr, sizeof(received_neighbour_info));
+			cntptr = cntptr + sizeof(received_neighbour_info);
+			bcnt = bcnt + sizeof(received_neighbour_info);
 
 			///read last service info (5)
 			
@@ -283,17 +329,31 @@ FootbotRelay::parseMessage(size_t len)
 	void 
 FootbotRelay::ControlStep() 
 { 
-	
+	if(changePos)
+	{
+		vector<double> tempBasePos = baseStationPosition[counter];
+		CVector3 targetPos(tempBasePos[0], tempBasePos[1], 0);
+		m_navClient->setTargetPosition(targetPos);
+		if(counter == NumberOfBaseStation)
+			{ counter = 1; }
+		else
+			{ counter = counter + 1; }
+		changePos = false;
+	}
+	else if(m_navClient->state() == target_state)
+	{
+		changePos = true;
+	}
+
 	m_Steps+=1;
  
 	if(m_Steps % 20 == 0)
 	{
-
-	/// This profile message is sent to other relay robots using long communication range 
-			size_t psize = createProfileMessage();
-			DEBUGCOMM("Sending MSG of size %lu\n",psize); 
-			m_pcWifiActuator->SendBinaryMessageTo("-1",(char*)m_socketMsg,psize); 
-	}
+	  /// This profile message is sent to other relay robots using long communication range 
+		//size_t psize = createProfileMessage();
+		//DEBUGCOMM("Sending MSG of size %lu\n",psize); 
+		//m_pcWifiActuator->SendBinaryMessageTo("-1",(char*)m_socketMsg,psize); 
+ 	}
 	
 	TMessageList t_incomingMsgs;
 
@@ -304,7 +364,7 @@ FootbotRelay::ControlStep()
 			std::copy(it->Payload.begin(),it->Payload.end() , m_incomingMsg);
 			DEBUGCOMM("Copied %lu bytes to incoming buffer\n", it->Payload.size());
 			parseMessage(it->Payload.size());
-		}
+ 		}
 
 
 	m_pcLEDs->SetAllColors(CColor::MAGENTA);
