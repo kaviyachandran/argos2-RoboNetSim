@@ -18,7 +18,7 @@ namespace constants
 } MessageSource;
 
 // Map with id and position of neighbours.
-typedef std::map<uint8_t,std::vector<double> > NeighbourMap;
+//typedef std::map<uint8_t,std::vector<double> > NeighbourMap;
 
 }
 #endif
