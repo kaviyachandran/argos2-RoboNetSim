@@ -73,7 +73,7 @@ class FootbotRelay: public CCI_Controller
     UInt8 getNeighbourInfo();
 
     size_t createProfileMessage();
-    size_t messageSize;
+    
     
     
    struct LastserviceInfo
@@ -88,14 +88,16 @@ class FootbotRelay: public CCI_Controller
     // Map with id and position of neighbours.
     typedef std::map<uint8_t,std::vector<double> > NeighbourMap;
     
-    NeighbourMap relay_neighbour;
-
+    NeighbourMap neighbourRobot;
+    NeighbourMap neighbourRelay;
     /// variables used for received message
 
     struct LastserviceInfo received_lastserviceInfo;
     uint8_t targetBaseStation;
     NeighbourMap received_neighbour_info;
-
+    NeighbourMap baseStationPosition;
+    vector<double> getBaseStationPositions(TConfigurationNode node);
+    
   public:
 
     /* Class constructor. */
