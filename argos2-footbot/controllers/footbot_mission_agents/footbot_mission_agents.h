@@ -1,5 +1,5 @@
-#ifndef _FOOTBOTDIF_H_
-#define _FOOTBOTDIF_H_
+#ifndef _FOOTBOTMISAGENT_H_
+#define _FOOTBOTMISAGENT_H_
 
 #include <iostream>
 #include <fstream>
@@ -27,7 +27,7 @@ using namespace std;
 
 #define MAX_UDP_SOCKET_BUFFER_SIZE 1500
 
-class FootbotDiffusionExample: public CCI_Controller
+class FootbotMissionAgents: public CCI_Controller
 {
   private:
     UInt32 RandomSeed;
@@ -50,16 +50,16 @@ class FootbotDiffusionExample: public CCI_Controller
     UInt8 getNumberOfNeighbors();
 
     size_t makeProfileMsg();
-
+    //void parseMessage(size_t );
    
     
   public:
 
     /* Class constructor. */
-    FootbotDiffusionExample();
+    FootbotMissionAgents();
 
     /* Class destructor. */
-    virtual ~FootbotDiffusionExample() {
+    virtual ~FootbotMissionAgents() {
     }
 
     virtual void Init(TConfigurationNode& t_tree);

@@ -1,4 +1,4 @@
-#include "footbot_diffusion_example.h"
+#include "footbot_mission_agents.h"
 
 
 #ifndef FOOTBOT_SIM
@@ -23,7 +23,7 @@
 #endif
 
 
-FootbotDiffusionExample::FootbotDiffusionExample() :
+FootbotMissionAgents::FootbotMissionAgents() :
   RandomSeed(12345),
   m_Steps(0),
   m_randomGen(0)
@@ -32,7 +32,7 @@ FootbotDiffusionExample::FootbotDiffusionExample() :
 
 
   void 
-FootbotDiffusionExample::Init(TConfigurationNode& t_node) 
+FootbotMissionAgents::Init(TConfigurationNode& t_node) 
 {
   /// The first thing to do, set my ID
 #ifdef FOOTBOT_SIM
@@ -98,7 +98,7 @@ FootbotDiffusionExample::sendStringPacketTo(int dest, const string msg)
 /// taking into account the current packet size
 /// valid for both simulation and real
 size_t
-FootbotDiffusionExample::makeProfileMsg()
+FootbotMissionAgents::makeProfileMsg()
 {
   uint32_t bcnt = 0;
   char *cntptr = m_socketMsg;
@@ -164,13 +164,13 @@ FootbotDiffusionExample::makeProfileMsg()
 }
 
 UInt8
-FootbotDiffusionExample::getNumberOfNeighbors()
+FootbotMissionAgents::getNumberOfNeighbors()
 {
   return 0;
 }
 
 CVector3
-FootbotDiffusionExample::randomWaypoint()
+FootbotMissionAgents::randomWaypoint()
 {
   /// generate point in the square (1,5) x (1,5)
   Real x = m_randomGen->Uniform(CRange<Real>(1,5));
@@ -184,7 +184,7 @@ FootbotDiffusionExample::randomWaypoint()
 }
 
   void 
-FootbotDiffusionExample::ControlStep() 
+FootbotMissionAgents::ControlStep() 
 {
   m_Steps+=1;
 
@@ -246,7 +246,7 @@ FootbotDiffusionExample::ControlStep()
 
 
   void 
-FootbotDiffusionExample::Destroy() 
+FootbotMissionAgents::Destroy() 
 {
   DEBUG_CONTROLLER("FootbotDiffusionExample::Destroy (  )\n");
 }
@@ -254,14 +254,14 @@ FootbotDiffusionExample::Destroy()
 /**************************************/
 
 bool 
-FootbotDiffusionExample::IsControllerFinished() const 
+FootbotMissionAgents::IsControllerFinished() const 
 {
   return false;
 }
 
 
 std::string
-FootbotDiffusionExample::getTimeStr()
+FootbotMissionAgents::getTimeStr()
 {
 #ifndef FOOTBOT_SIM
   char buffer [80];
@@ -281,7 +281,7 @@ FootbotDiffusionExample::getTimeStr()
 
 /// returns time in milliseconds
   UInt64 
-FootbotDiffusionExample::getTime()
+FootbotMissionAgents::getTime()
 {
 #ifndef FOOTBOT_SIM
   struct timeval timestamp;
