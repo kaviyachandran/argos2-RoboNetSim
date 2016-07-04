@@ -20,8 +20,8 @@ if( ARGOS_COMPILE_REAL_SWARMANOID )
     ${CMAKE_SOURCE_DIR}/../../real_robot/swarmanoid/opencv/lib
     ${CMAKE_BINARY_DIR}/../../../real_robot/swarmanoid/footbot
     )
-  add_executable(footbot_diffusion_example
-    ${footbot_diffusion_example_IMPLEMENTATIONS}
+  add_executable(footbot_mission_agents
+    ${footbot_mission_agents_IMPLEMENTATIONS}
     ${CMAKE_SOURCE_DIR}/main_functions/real_footbot_main.cpp
     )
 
@@ -29,7 +29,7 @@ if( ARGOS_COMPILE_REAL_SWARMANOID )
   #SET_TARGET_PROPERTIES(lcm_static PROPERTIES 
   #IMPORTED_LOCATION /usr/local/angstrom/arm/arm-angstrom-linux-gnuea/lib/liblcm.la)
 
-  target_link_libraries(footbot_diffusion_example 
+  target_link_libraries(footbot_mission_agents 
     argos2_real_robot_swarmanoid_footbot
     argos2_real_robot_swarmanoid_common
     argos2_common_control_interface 
@@ -44,10 +44,10 @@ else( ARGOS_COMPILE_REAL_SWARMANOID )
   include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav)
   include_directories(${CMAKE_SOURCE_DIR}/controllers/rvo_nav/lcm)
   #link_directories(${CMAKE_BINARY_DIR}/lib/utils)
-  add_library(footbot_diffusion_example 
+  add_library(footbot_mission_agents 
     MODULE 
-    ${footbot_diffusion_example_IMPLEMENTATIONS})
-  target_link_libraries(footbot_diffusion_example lcm navigation)
+    ${footbot_mission_agents_IMPLEMENTATIONS})
+  target_link_libraries(footbot_mission_agents lcm navigation)
 
 endif( )
 
