@@ -44,10 +44,11 @@
       <sensors>
 	      <wifi implementation="extern" />
 	      <footbot_proximity implementation="rot_z_only" 
-			   show_rays="true" calibrate="true" />
+			   show_rays="false" calibrate="true" />
         <footbot_encoder implementation="default"/>
       </sensors>
       <parameters alpha="7.5" delta="0.001" velocity="10" interval="10" generators="0.4">
+
 	     <optimalSpeed>0.2</optimalSpeed>
 	     <safetyMargin>0.1</safetyMargin>
 	     <socialMargin>0.1</socialMargin>
@@ -116,19 +117,21 @@
       library="build/controllers/footbot_relay/libfootbot_relay.so">
     
        <actuators>
-        <wifi implementation="extern" />
-	 <!--<wifi implementation="default" /> -->
+       <!--<wifi implementation="default"  range="20" probability="1"/>-->
+          <wifi implementation="extern"/>
+	    <!-- <wifiextern implementation="default" />-->
         <footbot_wheels implementation="default" />
         <footbot_leds   implementation="default" />
         <footbot_beacon   implementation="default" />
+
       </actuators>
 
       <sensors>
-        <wifi implementation="extern" />
-	<!-- <wifi implementation="default" /> -->
+         <wifi implementation="extern" />
+       <!--<wifiextern implementation="default" />-->
   
         <footbot_proximity implementation="rot_z_only" 
-         show_rays="true" calibrate="true" />
+         show_rays="false" calibrate="true" />
         <footbot_encoder implementation="default"/>
       </sensors>
 
@@ -162,9 +165,10 @@
        <destinationAreaX>8.0</destinationAreaX>
        <destinationAreaY>6.5</destinationAreaY>
 
-       <NumberOfBaseStation param="2"/>
+       <NumberOfBaseStation param="3"/>
        <BaseStation1 param="position" x="1.2" y="1.0"/>
        <BaseStation2 param="position" x="4.2" y="4.8"/>
+       <BaseStation3 param="position" x="1.0" y="2.5"/>
     </parameters>
     </footbot_relay_controller>
    
@@ -222,6 +226,12 @@
         controller="fbase" />
 
     <foot-bot id="fb_2"
+        position="1.0,2.5,0"
+        orientation="1,1,0"
+        wifi_enabled="true"
+        controller="fbase" />
+
+    <foot-bot id="fb_3"
         position="4.2,4.8,0"
         orientation="1,1,0"
         wifi_enabled="true"
@@ -237,28 +247,27 @@
     </distribute>
     -->
 
-    <distribute>
+    <!--<distribute>
       <position method="uniform" min="1,1,0" max="5,5,0" />
       <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
-      <entity quantity="3" max_trials="100" base_num="3" >
+      <entity quantity="3" max_trials="100" base_num="4" >
       <foot-bot id="fb" controller="fnav" />
       </entity>
-    </distribute>
+    </distribute>-->
     
     
-    <distribute>
+     <distribute>
       <position method="uniform" min="1,1,0" max="5,5,0" />
       <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
-      <entity quantity="1" max_trials="100" base_num="6" >
+      <entity quantity="2" max_trials="100" base_num="4" >
       <foot-bot id="fb" controller="frelay" />
       </entity>
     </distribute>
-     
    
     <!--
 	this is necessary for robonetsim
     -->
-    <wifi-medium id="wm" number_of_nodes="6"/>
+    <wifi-medium id="wm" number_of_nodes="5"/>
   </arena>
   <media>
     <led id="leds" />
