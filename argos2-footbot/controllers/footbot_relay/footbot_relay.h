@@ -25,6 +25,8 @@
 #include <sstream>
 #include <include/constants.hpp>
 #include <iterator>   
+#include <random>
+
 
 using namespace argos;
 using namespace std;
@@ -66,13 +68,16 @@ class FootbotRelay: public CCI_Controller
     CVector3 position;
     UInt8 counter;
     char *m_incomingMsg;
-    void parseMessage(size_t );
+    void parseMessage(std::vector<char> &v);
 
-    char *m_socketMsg;
+    char *m_relaySocketMsg;
     
     UInt8 getNeighbourInfo();
 
-    size_t createProfileMessage();
+    size_t createProfileMessage(char* msg);
+    
+    
+    int min,max;
     
     
     
