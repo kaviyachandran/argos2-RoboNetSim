@@ -62,8 +62,9 @@ namespace argos {
       SInt32 nRecipient =  m_tIdConversionMap[it->Recipient];
       ns3Real fCurrentTimeSlice = m_cSpace.GetSimulationClock() / CPhysicsEngine::GetInverseSimulationClockTick();
       /*Build the packet*/
-      // printf("Generating packet - payload size %d\n", (int) it->Payload.size());
-      //fflush(stdout);
+       //printf("Generating packet - payload size %d\n", (int) it->Payload.size());
+       //fflush(stdout);
+
       GenerateMsg(pMsg, nMsgSize, nSender, nRecipient, 
 		  &it->Payload[0], it->Payload.size(),
 		  fCurrentTimeSlice,it->Delay);
@@ -114,11 +115,13 @@ namespace argos {
 			  //std::string str_content(pMessage,nMsgSize-sizeof(TApplicationPacket));
 //			  CMessage cMsg(pFrom, GetId(), str_content);
 //			  // end commend here
+        // Added 0to fdelay to call the constructor (to send binary message)
+
 			  CMessage cMsg(pFrom, GetId(), pMessage,
-					nMsgSize-sizeof(TApplicationPacket));
-			  //printf("Received msg of size %d\n", nMsgSize);
+					nMsgSize-sizeof(TApplicationPacket),0);
+			  //printf("Received msg of size %d App Packet %d \n", nMsgSize,sizeof(TApplicationPacket));
 			  //fflush(stdout);
-			  //std::cerr << cMsg.Sender << " sended: " << cMsg.Payload << " to " << cMsg.Recipient << std::endl;
+			  //std::cerr << cMsg.Sender << " sent: " << cMsg.Payload.size() << " to " << cMsg.Recipient << std::endl;
 			  tReceivedMessages.push_back(cMsg);
 			  delete pFrom;
 		  }
