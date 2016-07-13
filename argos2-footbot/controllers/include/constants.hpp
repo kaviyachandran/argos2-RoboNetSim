@@ -4,10 +4,11 @@
 namespace constants
 {
  enum MessageSource
-{
+{   
+	MISSION_AGENTS,
 	RELAY,
-	BASE_STATION,
-	MISSION_AGENTS
+	BASE_STATION
+	
 };
 
 // Map with id and position of neighbours.
