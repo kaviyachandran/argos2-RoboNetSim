@@ -6,6 +6,8 @@ set(footbot_baseStation_IMPLEMENTATIONS
   footbot_baseStation.cc
   )
 
+add_definitions(-std=c++11)
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories( ${CMAKE_SOURCE_DIR}/controllers)
 

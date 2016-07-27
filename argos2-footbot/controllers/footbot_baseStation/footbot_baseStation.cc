@@ -59,19 +59,6 @@ FootbotBaseStation::Init(TConfigurationNode& t_node)
   /// Sets color to all leds
   m_pcLEDs->SetAllColors(CColor::RED);
 
-  /*mapActuators = (GetRobot().GetAllActuators());
-  
-  // show content:
-  for(itActuators = mapActuators.begin();
-          itActuators != mapActuators.end();
-          ++itActuators) 
-  std::cout << itActuators->first << " => " << itActuators->second << '\n'; */
- 
-//Real x = m_navClient->currentPosition().GetX();
-//Real y = m_navClient->currentPosition().GetY();
-//cout << "Position Base: "<< x << y;
-//CVector3 position(x,y,0);
-//broadcastStringPacket(position);
 }
 
 
@@ -86,7 +73,7 @@ FootbotBaseStation::broadcastStringPacket(const CVector3& baseposition)
   
   stringMessage << "BaseStation : " << int(m_myID) << " Position : " << (Real)baseposition.GetX() << ","<<(Real)baseposition.GetY();
   std::cout << stringMessage.str() << std::endl;
- // m_pcWifiActuator->BroadcastMessage(stringMessage.str());
+ 
 }
 
 
@@ -95,23 +82,14 @@ FootbotBaseStation::ControlStep()
 {
   m_Steps+=1;
 
-  /* do whatever */
-
-  /// every two seconds
-  if( m_Steps % 20 == 0)
-    { 
-      Real x = m_navClient->currentPosition().GetX();
-      Real y = m_navClient->currentPosition().GetY();
-      cout << "Position Base: "<< x << y;
-      CVector3 position(x,y,0);
-      broadcastStringPacket(position);
-      /// send network packet
-      //printf("Hello. I'm %d - sending network packet\n", (int) m_myID);
-      //broadcastStringPacket("hello I am base station");
-      
-    } 
+ 
   
-
+   TMessageList t_incomingMsgs;
+   m_pcWifiSensor->GetReceivedMessages_Local(t_incomingMsgs);
+   for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++){
+	   
+	   std::cout << m_myID << " received packet from " << it->Sender << std::endl;
+    }
   
   ///  must call this two methods from navClient in order to
   ///  update the navigation controller
