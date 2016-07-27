@@ -5,6 +5,7 @@ set(argos2_simulator_sensors_HEADERS_base
   sensor_samples.h
   wifi_sensor.h
   wifi_sensor_extern.h
+  wifi_sensor_dual.h
   clock_sensor.h
 )
 
@@ -60,6 +61,7 @@ set(argos2_simulator_sensors_IMPLEMENTATIONS
   sensor_samples.cpp
   wifi_sensor.cpp
   wifi_sensor_extern.cpp
+  wifi_sensor_dual.cpp
   clock_sensor.cpp
   foot-bot/footbot_base_ground_sensor.cpp
   foot-bot/footbot_motor_ground_sensor.cpp

@@ -149,6 +149,8 @@ namespace argos {
     case EXTERN:
       SendMessagesOverSocket(t_message_list);
       break;
+    case DUAL:
+      std::cerr << "MUST USE SendMessagesOverSocket or SendMessagesLocal directly";
     default:
       std::cerr << "UNKNOWN MODE FOR WIFI EQUIPPED ENTITY\n";
       break;
@@ -165,6 +167,9 @@ namespace argos {
       return this->GetMessagesLocal();
     case EXTERN:
       return this->GetMessagesFromSocket();
+    case DUAL:
+      std::cerr << "MUST USE GetMessagesLocal or GetMessagesFromSocket directly\n";
+      break;
     default:
       std::cerr << "UNKNOWN MODE FOR WIFI EQUIPPED ENTITY\n";
       break;
@@ -177,16 +182,16 @@ namespace argos {
 
   void CWiFiEquippedEntity::SetMode(TMode const t_mode)
   {
-    if(m_bModeSet){
-      std::cerr << "WiFiEquippedEntity Mode already setted\n";
-    }else{
-      m_bModeSet = true;
-      m_tMode = t_mode;
-      if(m_tMode == EXTERN){
-	InitSocketWithExternalApplication();
+    m_bModeSet = true;
+    m_tMode = t_mode;
+    if(m_tMode == EXTERN || m_tMode == DUAL)
+      {
+	if( !m_externInitialized )
+	  {
+	    InitSocketWithExternalApplication();
+	    m_externInitialized = true;
+	  }
       }
-    }
-
   }
 
   /****************************************/

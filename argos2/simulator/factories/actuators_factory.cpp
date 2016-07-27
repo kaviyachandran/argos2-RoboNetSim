@@ -43,6 +43,7 @@ namespace argos {
    CCI_Actuator* CActuatorsFactory::NewActuator(const std::string& str_actuator_type,
                                                 const std::string& str_actuator_implementation) {
       std::string strKey = str_actuator_type + " (" + str_actuator_implementation + ")";
+      
       if(GetActuatorPlugin()->FactoryMap.find(strKey) == GetActuatorPlugin()->FactoryMap.end()) {
          THROW_ARGOSEXCEPTION("Actuator type \"" << str_actuator_type << "\", implementation \"" << str_actuator_implementation << "\" not found");
       }

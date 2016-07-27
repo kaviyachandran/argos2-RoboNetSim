@@ -38,7 +38,7 @@ namespace argos {
 namespace argos {
 
   class CWiFiActuator : public CSimulatedActuator,
-			public CCI_WiFiActuator {
+            public CCI_WiFiActuator {
 
   public:
 
@@ -56,20 +56,44 @@ namespace argos {
     virtual void Reset();
 
     virtual void SendMessageTo(const std::string& str_recipient,
-			       const std::string& str_payload,
-			       int f_delay = 0);
+                   const std::string& str_payload,
+                   int f_delay = 0);
 
     virtual void SendBinaryMessageTo(const std::string& str_recipient,
-			       const char *payload,
-			       size_t len,
-			       int f_delay = 0)
-    {
-      printf("BINARY DATA NOT SUPPORTED\n");
-      exit(1);
-    }
-
+                   const char *payload,
+                   size_t len,
+                     int f_delay = 0);
     virtual void BroadcastMessage(const std::string& str_payload,
-				  int f_delay = 0);
+                  int f_delay = 0);
+
+    virtual void SendMessageTo_Local(const std::string& str_recipient,
+                   const std::string& str_payload,
+                   int f_delay = 0)
+    {}
+
+    virtual void SendBinaryMessageTo_Local(const std::string& str_recipient,
+                   const char *payload,
+                   size_t len,
+                     int f_delay = 0)
+    {}
+    virtual void BroadcastMessage_Local(const std::string& str_payload,
+                  int f_delay = 0)
+    {}
+    
+    virtual void SendMessageTo_Extern(const std::string& str_recipient,
+                   const std::string& str_payload,
+                   int f_delay = 0)
+    {}
+
+    virtual void SendBinaryMessageTo_Extern(const std::string& str_recipient,
+                   const char *payload,
+                   size_t len,
+                        int f_delay = 0)
+    {}
+    virtual void BroadcastMessage_Extern(const std::string& str_payload,
+                  int f_delay = 0)
+    {}
+
 
   private:
 
@@ -77,7 +101,7 @@ namespace argos {
     CEntity* m_pcEntity;
     CWiFiEquippedEntity* m_pcWiFiEquippedEntity;
     Real m_fRange;
-    Real m_fProbability;	// added by Michal: a probability of successful transmission in the 'disc probability model'
+    Real m_fProbability;    // added by Michal: a probability of successful transmission in the 'disc probability model'
     //My added stuff (Cinus)
     TMessageList m_tMessages;
 

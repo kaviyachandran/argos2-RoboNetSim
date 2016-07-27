@@ -3,6 +3,7 @@ set(argos2_simulator_actuators_HEADERS_base
   range_and_bearing_actuator.h
   wifi_actuator.h
   wifi_actuator_extern.h
+  wifi_actuator_dual.h
 )
 
 set(argos2_simulator_actuators_HEADERS_footbot
@@ -43,6 +44,7 @@ set(argos2_simulator_actuators_IMPLEMENTATIONS
   range_and_bearing_actuator.cpp
   wifi_actuator.cpp
   wifi_actuator_extern.cpp
+  wifi_actuator_dual.cpp
   foot-bot/footbot_leds_actuator.cpp
   foot-bot/footbot_base_leds_actuator.cpp
   foot-bot/footbot_beacon_actuator.cpp

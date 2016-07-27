@@ -131,4 +131,27 @@ namespace argos {
 		  "    ...\n"
 		  "  </controllers>\n\n",
 		  "UNDER DEVELOPMENT");
+    REGISTER_SENSOR(CWiFiSensorExternNamed,
+		  "wifiextern", "default",
+		  "The Swarmanoid wifi sensor",
+		  "Marco Cinus [marco@idsia.ch]",
+		  "This sensor accesses the foot-bot wifi sensor. For a complete\n"
+		  "description of its usage, refer to the common interface.\n"
+		  "In this implementation, a footbot receives all messages which are a unicast\n"
+		  "message directed to it or a broadcast message. There's no range implemented\n"
+		  "REQUIRED XML CONFIGURATION\n\n"
+		  "  <controllers>\n"
+		  "    ...\n"
+		  "    <my_controller ...>\n"
+		  "      ...\n"
+		  "      <sensors>\n"
+		  "        ...\n"
+		  "        <wifi implementation=\"extern\" />\n"
+		  "        ...\n"
+		  "      </sensors>\n"
+		  "      ...\n"
+		  "    </my_controller>\n"
+		  "    ...\n"
+		  "  </controllers>\n\n",
+		  "UNDER DEVELOPMENT");
 }

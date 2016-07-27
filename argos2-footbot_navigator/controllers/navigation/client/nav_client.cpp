@@ -35,13 +35,10 @@
 #endif
 
 
-#ifdef USE_WP_LIST
 TimestampedWaypointListHandler *RVONavClient::m_wpControl =
   new TimestampedWaypointListHandler("udpm://239.255.76.67:7667?ttl=1", 
 				 "TARGET", true);
-#else
 LCMThread * RVONavClient::lcmThreadCommand = new LCMThread();
-#endif
 
 LCMThread * RVONavClient::lcmThread = new LCMThread();
 bool RVONavClient::m_lcm_isset = false;
@@ -81,6 +78,7 @@ RVONavClient::RVONavClient(UInt8 robot_id, CCI_Robot &robot) :
   m_wpTimeout = 10*1000; /// in ms
   m_obstacleAvoidanceCounter = 0;
   m_obstacleAvoidanceAllowance = 10; /// in steps
+  m_useWpControl = true;
 }
 
 void
@@ -123,9 +121,10 @@ RVONavClient::stop()
   m_pcWheels->SetLinearVelocity(0,0);
   m_enforcing = false;
   m_started = false;
-#ifdef USE_WP_LIST
-  m_wpControl->clear();
-#endif
+  if( m_useWpControl )
+    {
+      m_wpControl->clear();
+    }
 }
 UInt8
 RVONavClient::robotId()
@@ -136,7 +135,7 @@ RVONavClient::robotId()
   bool 
 RVONavClient::isNodeValid( const Node &n )
 {
-#ifndef FOOTBOT_SIM
+#ifndef FOOTBOT_LQL_SIM
   UInt64 dt = getTime() - n.getTimestamp();
   return (dt < NODE_VALIDITY_THRESHOLD);
 #else
@@ -256,18 +255,24 @@ RVONavClient::setState(RobotNavState s)
     setBeacon();
     /// we assume that robot arrived to enforced pos
     /// BUG: we need to update navigation once to stop the robot
-    /*
+    //m_enforcing = false;
+    
     if( m_enforcing )
       {
+	updateNavigation();
+	/// clear the flag
+	m_enforcing = false;
 	stay();
 	// first, update nav
 	updateNavigation();
-	/// then, clear the flag
-	m_enforcing = false;
 	/// and go back to original speed
 	setOptimalSpeed(m_agentSpeed);
+
+	///Trying to solve a bug usign FORCE_POS
+	///before starting
+	m_pcWheels->SetLinearVelocity(0,0);       
       }
-    */
+    
   }
 
   if( s == STATE_MOVING || s == STATE_ORIENTING)
@@ -456,6 +461,8 @@ RVONavClient::init(TConfigurationNode& t_node)
 	m_mobMode = MOBILITY_NONE;
       }
     GetNodeAttributeOrDefault(node, "wpTimeout", m_wpTimeout, m_wpTimeout);
+    GetNodeAttributeOrDefault(node, "useWpControl", m_useWpControl, m_useWpControl);
+    GetNodeAttributeOrDefault(node, "enforcingSpeed", m_enforcingSpeed, m_enforcingSpeed);
     DEBUGNAV("Mobility Mode %s\n", mobMode.c_str());
   }
   else
@@ -471,6 +478,7 @@ RVONavClient::init(TConfigurationNode& t_node)
   {
     TConfigurationNode node = GetNode(t_node, "lcm");
     GetNodeAttributeOrDefault<std::string>(node, "track", track_chan, track_chan);
+    GetNodeAttributeOrDefault<std::string>(node, "target", target_chan, target_chan);
   }
   else
   {
@@ -478,16 +486,12 @@ RVONavClient::init(TConfigurationNode& t_node)
   }
   if( m_mobMode == MOBILITY_LCM || m_mobMode == MOBILITY_LCM_POP )
     {
-#ifndef USE_WP_LIST
-      lcmThreadCommand->setLCMEngine("udpm://239.255.76.67:7667?ttl=1", "TARGET");
-      lcmThreadCommand->startInternalThread();
-#else
-  //m_wpControl = 
-  //new TimestampedWaypointListHandler("udpm://239.255.76.67:7667?ttl=1", 
-  //	       "TARGET");
-//  if( !m_wpControl->run() )
-//    DEBUGERROR("error while running waypoint control\n");
-#endif
+      if( !m_useWpControl )
+	{
+	  lcmThreadCommand->setLCMEngine("udpm://239.255.76.67:7667?ttl=1",
+					 target_chan.c_str());
+	  lcmThreadCommand->startInternalThread();
+	}
     }
 
   /// lcm is set ONCE
@@ -608,79 +612,19 @@ RVONavClient::updateTargetPosition(bool pop_wp)
 {
   if( m_enforcing )
     {
-      DEBUGNAV("SetTargetPosition -REJECTED because enforcing\n");
+      DEBUGNAV("updateTargetPosition -REJECTED because enforcing\n");
       return;
     }
-  m_targetTimeout = false;
-  m_cntTargetTime = getTime();
 
   if( m_mobMode == MOBILITY_LCM )
     {
       CRadians oA;
-      CVector3 axis;
-
-      
-  /// New target point from the COMMAND engine
-#ifdef USE_WP_LIST
-      std::pair< bool, TimestampedWaypoint> c_wp =
-	m_wpControl->getNextWaypoint(m_myID,getTime());
-      if( c_wp.first )
+      CVector3 axis;      
+      /// New target point from the COMMAND engine
+      if( m_useWpControl )
 	{
-	  CVector2 n_wp(c_wp.second.second.GetX(), c_wp.second.second.GetY());
-	  Real n_ori = c_wp.second.second.GetYaw();
-	  if( m_targetPosition != n_wp || m_targetOrientation != n_ori)    
-	    {
-	      DEBUGNAV("NEW_WP (%f,%f):%.2f valid from %llu\n", 
-		       n_wp.GetX(), n_wp.GetY(), n_ori, c_wp.second.first);
-	      m_targetPosition.Set( n_wp.GetX(), n_wp.GetY());
-	      m_targetOrientation = n_ori;
-	    }
-	} 
-      else
-	{
-	  DEBUGNAV("STAY\n");
-	  /// stay in same pos
-	  stay();
- 	}
-#else
-      if (lcmThreadCommand->getLcmHandler()->existNode(m_myID)) 
-	{
-	  Node nodeCommand = 
-	    lcmThreadCommand->getLcmHandler()->getNodeById(m_myID);
-	  m_targetPosition.Set(nodeCommand.getPosition().GetX(), 
-			       nodeCommand.getPosition().GetY());
-	  DEBUGNAV("ID %d - SET_TARGET: (%f,%f)\n", 
-		   (int) m_myID, 
-		   nodeCommand.getPosition().GetX(), 
-		   nodeCommand.getPosition().GetY());
-	} 
-      else 
-	{
-	  if (lcmThread->getLcmHandler()->existNode(m_myID)) 
-	    {
-	      stay();
-	      // Node nodeCommand = 
-	      // 	lcmThread->getLcmHandler()->getNodeById(m_myID);
-	      // m_targetPosition.Set(nodeCommand.getPosition().GetX(), 
-	      // 			   nodeCommand.getPosition().GetY());
-	      // DEBUGNAV("ID %d - REMAIN_IN_POS: (%f,%f)\n", 
-	      // 	       (int) m_myID, 
-	      // 	       nodeCommand.getPosition().GetX(), 
-	      // 	       nodeCommand.getPosition().GetY());
-	    }
-	}
-#endif
-    }
-  else if( m_mobMode == MOBILITY_LCM_POP  )
-    {
-#ifdef USE_WP_LIST
-      DEBUGNAV("updateTarget LCM_POP, pop? %d\n", pop_wp);
-      if( pop_wp )
-	{
-	  CRadians oA;
-	  CVector3 axis;
 	  std::pair< bool, TimestampedWaypoint> c_wp =
-	    m_wpControl->popWaypoint(m_myID);
+	    m_wpControl->getNextWaypoint(m_myID,getTime());
 	  if( c_wp.first )
 	    {
 	      CVector2 n_wp(c_wp.second.second.GetX(), c_wp.second.second.GetY());
@@ -691,30 +635,90 @@ RVONavClient::updateTargetPosition(bool pop_wp)
 			   n_wp.GetX(), n_wp.GetY(), n_ori, c_wp.second.first);
 		  m_targetPosition.Set( n_wp.GetX(), n_wp.GetY());
 		  m_targetOrientation = n_ori;
+		  m_targetTimeout = false;
+		  m_cntTargetTime = getTime();
 		}
 	    } 
 	  else
 	    {
 	      DEBUGNAV("STAY\n");
-	      setState( STATE_ARRIVED_AT_TARGET );
 	      /// stay in same pos
 	      stay();
 	    }
 	}
-#else
-      ERRORNAV("LCM_POP not supported");
-#endif
+      else
+	{
+	  if (lcmThreadCommand->getLcmHandler()->existNode(m_myID)) 
+	    {
+	      Node nodeCommand = 
+		lcmThreadCommand->getLcmHandler()->getNodeById(m_myID);
+	      m_targetPosition.Set(nodeCommand.getPosition().GetX(), 
+				   nodeCommand.getPosition().GetY());
+	      DEBUGNAV("ID %d - SET_TARGET: (%f,%f)\n", 
+		       (int) m_myID, 
+		       nodeCommand.getPosition().GetX(), 
+		       nodeCommand.getPosition().GetY());
+	      m_targetTimeout = false;
+	      m_cntTargetTime = getTime();
+	    } 
+	  else 
+	    {
+	      if(lcmThread->getLcmHandler()->existNode(m_myID) ) 
+		{
+		  stay();
+		}
+	    }
+	}
+    }
+  else if( m_mobMode == MOBILITY_LCM_POP  )
+    {
+      if( m_useWpControl )
+	{
+	  DEBUGNAV("updateTarget LCM_POP, pop? %d\n", pop_wp);
+	  if( pop_wp )
+	    {
+	      CRadians oA;
+	      CVector3 axis;
+	      std::pair< bool, TimestampedWaypoint> c_wp =
+		m_wpControl->popWaypoint(m_myID);
+	      if( c_wp.first )
+		{
+		  CVector2 n_wp(c_wp.second.second.GetX(), c_wp.second.second.GetY());
+		  Real n_ori = c_wp.second.second.GetYaw();
+		  if( m_targetPosition != n_wp || m_targetOrientation != n_ori)    
+		    {
+		      DEBUGNAV("NEW_WP (%f,%f):%.2f valid from %llu\n", 
+			       n_wp.GetX(), n_wp.GetY(), n_ori, c_wp.second.first);
+		      m_targetPosition.Set( n_wp.GetX(), n_wp.GetY());
+		      m_targetOrientation = n_ori;
+		      m_targetTimeout = false;
+		      m_cntTargetTime = getTime();
+		    }
+		} 
+	      else
+		{
+		  DEBUGNAV("STAY\n");
+		  setState( STATE_ARRIVED_AT_TARGET );
+		  /// stay in same pos
+		  stay();
+		}
+	    }
+	}
+      else
+	{
+	  ERRORNAV("LCM_POP not supported");
+	}
     }
   else if( m_mobMode == MOBILITY_NONE )
     {
-      stay();
-    }
+	  stay();
+	}
   else if( m_mobMode == MOBILITY_SPIN )
     {
-      spin();
-    }
-}
-
+	  spin();
+	}
+	}
+	  
 
 void
 RVONavClient::spin()
@@ -726,6 +730,7 @@ RVONavClient::spin()
 void
 RVONavClient::stay()
 {
+  DEBUGNAV("stay()\n");
   CRadians oA;
   CVector3 axis;
 
@@ -734,7 +739,12 @@ RVONavClient::stay()
     {
       Node nodeCommand = 
 	lcmThread->getLcmHandler()->getNodeById(m_myID);
-      setTargetPosition(nodeCommand.getPosition()); 
+      setTargetPosition(nodeCommand.getPosition());
+    }
+  else
+    {
+      DEBUGNAV("Can't find position! forcing stay\n");
+      m_pcWheels->SetLinearVelocity(0,0);       
     }
 }
 
@@ -883,8 +893,9 @@ RVONavClient::update()
       } 
     else 
       {
-	DEBUGNAV("State: MOVING  -- cntTargetTime %ld currentTime %ld - from %f %f to %f %f\n",
-		 m_cntTargetTime, getTime(),
+	DEBUGNAV("State: MOVING  -- cntTargetTime %ld currentTime %ld\n",
+		 m_cntTargetTime, getTime());
+	DEBUGNAV("Moving from (%.2f %.2f) to (%.2f %.2f)\n",
 		 position.GetX(), position.GetY(),
 		 m_targetPosition.GetX(),
 		 m_targetPosition.GetY());
@@ -959,7 +970,11 @@ RVONavClient::setTargetPosition(CVector3 pos)
   DEBUGNAV("SetTargetPosition (%f, %f)\n", pos.GetX(), pos.GetY());
   CVector2 tpos(pos.GetX(), pos.GetY());
   if( validTarget(tpos))
+    {
     m_targetPosition =  tpos;
+    m_targetTimeout = false;
+    m_cntTargetTime = getTime();
+    }
   else
     {
       ERRORNAV("Invalid TargetPosition (%f, %f)\n", pos.GetX(),
@@ -1240,6 +1255,7 @@ RVONavClient::updateNavigation()
     agent->desideredAngle = CRadians::ZERO;
     agent->desideredSpeed = 0;
     agent->desideredVelocity = CVector2(0, 0);
+    m_pcWheels->SetLinearVelocity(0,0);
   } 
   else 
   {
@@ -1269,7 +1285,7 @@ RVONavClient::updateVelocity()
 std::string
 RVONavClient::getTimeStr()
 {
-#ifndef FOOTBOT_SIM
+#ifndef FOOTBOT_LQL_SIM
   char buffer [80];
   timeval curTime;
   gettimeofday(&curTime, NULL);
@@ -1294,7 +1310,7 @@ RVONavClient::setTime(UInt64 ctime)
   UInt64 
 RVONavClient::getTime()
 {
-#ifndef FOOTBOT_SIM
+#ifndef FOOTBOT_LQL_SIM
   struct timeval timestamp;
   gettimeofday(&timestamp, NULL);
 

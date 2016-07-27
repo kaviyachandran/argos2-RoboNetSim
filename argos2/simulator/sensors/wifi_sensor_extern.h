@@ -53,6 +53,9 @@ namespace argos {
     virtual void Reset();
 
     void GetReceivedMessages(TMessageList& t_messages);
+    void GetReceivedMessages_Local(TMessageList& t_messages){}
+    void GetReceivedMessages_Extern(TMessageList& t_messages){}
+    
 
     /*Added by michal*/
     void GetPositionInfo(CVector3& position); // Possibility to obtain coordinates via this sensor (thus, may also work as a virtual, ideal GPS-like device)
@@ -67,6 +70,40 @@ namespace argos {
     TMessageList m_tMessages;
     /*Added bby Michal, not used here*/
     CARGoSRandom::CRNG* m_pcRNG;
+
+  };
+
+  class CWiFiSensorExternNamed : public CWiFiSensorExtern {
+  public:
+    CWiFiSensorExternNamed()
+    {
+      CWiFiSensorExtern();
+    }
+    virtual ~CWiFiSensorExternNamed() {}
+
+    virtual void Init(TConfigurationNode& t_tree)
+    {
+      CWiFiSensorExtern::Init(t_tree);
+    }
+
+    inline virtual CEntity& GetEntity() {
+      
+      return CWiFiSensorExtern::GetEntity();
+    }
+    virtual void SetEntity(CEntity& c_entity)
+    {
+      CWiFiSensorExtern::SetEntity(c_entity);
+    }
+
+    virtual void Update()
+    {
+      CWiFiSensorExtern::Update();
+    }
+    virtual void Reset()
+    {
+      CWiFiSensorExtern::Reset();
+    }
+    
 
   };
 

@@ -16,7 +16,11 @@
   <!-- *************** -->
   <controllers>
     <footbot_central_controller id="fcentral"
+<<<<<<< HEAD
       library="/home/kavya/RoboNetSim/argos2-RoboNetSim/argos2-footbot_navigator/build/controllers/footbot_central/libfootbot_central_controller.so">
+=======
+      library="/home/eduardo/mygit/argos2-RoboNetSim/argos2-footbot_navigator/build/controllers/footbot_central/libfootbot_central_controller.so">
+>>>>>>> a2e9fcb9feb9e722fbfe24bec489ec3bb3422b63
       <actuators>
 
 	<footbot_wheels implementation="default" />

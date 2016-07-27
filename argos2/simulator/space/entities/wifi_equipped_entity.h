@@ -37,7 +37,8 @@ namespace argos {
 
   typedef enum {
     STAND_ALONE,
-    EXTERN
+    EXTERN,
+    DUAL,
   } TMode;
 
   typedef std::map<std::string, SInt32> TIdConversion;
@@ -50,6 +51,7 @@ namespace argos {
       //m_unNumericId = m_unStaticNumericIdCounter++;
       m_bModeSet = false;/*Added by Marco*/
       m_tMode = STAND_ALONE;
+      m_externInitialized = false;
     }
 
     virtual ~CWiFiEquippedEntity() {}
@@ -118,25 +120,27 @@ namespace argos {
     inline static SInt32 GetNumericId(std::string str_id){
 	    return m_tIdConversionMap[str_id];
     }
-  protected:
-    CVector3 m_cPosition;
-    CQuaternion m_cOrientation;
-  private:
-
     /*There are 2 implementation of the entity... 1 is stand alone, the other is
       collegated with the ns3 network simulator, for the end user it will always call
       the same function SendMessages but depending on the implementation type one there'll
       be a dispatching to the right function*/
     void SendMessagesOverSocket(const TMessageList& t_message_list);
     void SendMessagesLocal(const TMessageList& t_message_list);
-
-
     /*There are 2 implementation of the entity... 1 is stand alone, the other is
       collegated with the ns3 network simulator, for the end user it will always call
       the same function GetAllMessages but depending on the implementation type one there'll
       be a dispatching to the right function*/
     TMessageList GetMessagesFromSocket(void);
     TMessageList GetMessagesLocal(void);
+
+    
+
+  protected:
+    CVector3 m_cPosition;
+    CQuaternion m_cOrientation;
+  private:
+
+
 
     /*The function for the opening of the socket is private so that it can only be
       called inside the class*/
@@ -147,6 +151,7 @@ namespace argos {
     UInt32 m_unNumericId;/*The id of the entity, used when sending msg to ns3 as recipient*/
     TSocket m_tSocket;
     bool m_bModeSet;
+    bool m_externInitialized;
     CSpace& m_cSpace;
     Real m_fRange;
     Real m_fProbability;	// added by Michal

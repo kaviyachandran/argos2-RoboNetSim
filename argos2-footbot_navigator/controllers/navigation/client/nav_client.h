@@ -56,10 +56,7 @@ using namespace std;
 #include <argos2/common/utility/datatypes/datatypes.h>
 
 /// use waypoint lists instead of single waypoint for control
-#define USE_WP_LIST
-#ifdef USE_WP_LIST
 #include <navigation/lcm/timestamped_waypoint_list_handler.h>
-#endif
 
 #define NODE_VALIDITY_THRESHOLD 1000
   //< State of the robot
@@ -183,12 +180,8 @@ class RVONavClient
   //TODO: enable online configuration
   //  static TimestampedConfigMsgHandler *m_configHandler;
 
-#ifndef USE_WP_LIST
-  // LCM thread command channel
   static LCMThread *lcmThreadCommand;
-#else
   static TimestampedWaypointListHandler *m_wpControl;
-#endif
   /// List of node obstacles retrieved by LCM-tracking system. The
   /// other nodes are an obstacles for me.
   map<UInt8, Node> m_nodes;
@@ -253,6 +246,8 @@ class RVONavClient
    * It is set to [-alpha,alpha]. */
   CRange<CRadians> m_cGoStraightAngleRange;
 
+  bool m_useWpControl;
+
   void checkObstacles();
  public:
 
@@ -286,7 +281,7 @@ class RVONavClient
   void initLocalNavigation(TConfigurationNode& t_tree);
   void initGlobalNavigation(TConfigurationNode& t_tree);
   void initOdometry();
-#ifndef FOOTBOT_SIM
+#ifndef FOOTBOT_LQL_SIM
     static UInt64 getTime();
 #else
     UInt64 getTime();

@@ -41,7 +41,7 @@ if( ARGOS_COMPILE_REAL_SWARMANOID )
 
 else( ARGOS_COMPILE_REAL_SWARMANOID )
   add_definitions(-fPIC)
-  add_definitions(-DFOOTBOT_SIM)
+  add_definitions(-DFOOTBOT_LQL_SIM)
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lcm)
   add_library(navigation STATIC
     ${navigation_IMPLEMENTATIONS})

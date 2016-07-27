@@ -59,10 +59,10 @@ namespace argos {
             /* Yes, it does */
             m_pcWiFiEquippedEntity = &(pcComposableEntity->GetComponent<CWiFiEquippedEntity>("wifi_equipped_entity"));
             m_pcEntity = &c_entity;
-	    /* Setting the mode of the underlying wifi_entity */
-	    m_pcWiFiEquippedEntity->SetMode(argos::STAND_ALONE);
-	    m_pcWiFiEquippedEntity->SetRange(m_fRange);
-	    m_pcWiFiEquippedEntity->SetProbability(m_fProbability);
+      /* Setting the mode of the underlying wifi_entity */
+      m_pcWiFiEquippedEntity->SetMode(argos::STAND_ALONE);
+      m_pcWiFiEquippedEntity->SetRange(m_fRange);
+      m_pcWiFiEquippedEntity->SetProbability(m_fProbability);
          }
          else {
             /* No, error */
@@ -88,7 +88,22 @@ namespace argos {
 
    void CWiFiActuator::Reset() {
    }
+  
+   void
+   CWiFiActuator::SendBinaryMessageTo(const std::string& str_recipient,
+          const char *payload,
+          size_t len,
+          int f_delay)
+   {
 
+     std::string strSender(m_pcEntity->GetId());
+     CMessage tMessage(strSender, str_recipient, payload, len, f_delay);
+     /*Put the message in the delivery "queue"*/
+     m_tMessages.push_back(tMessage);
+
+   }
+
+  
    /****************************************/
    /****************************************/
 
@@ -118,19 +133,19 @@ namespace argos {
 
   /*Registering the Wifi Actuator*/
   REGISTER_ACTUATOR(CWiFiActuator,
-		    "wifi","default",
-		    "The wifi actuator",
-		    "Marco Cinus [marco@idsia.ch]",
-		    "This actuator access the wifi actuator of a wifi equipped entity (only footbots at this time)\n"
-		    "For a complete description of its usage refer to the common interface\n"
-		    "In this implementation the actuator is sending a message to all wifi-equipped entities\n"
-		    "present in the space. Two sendings behaviors are provided for the sender, a broadcast message, which is \n"
-		    "received and processed by all entities, and a unicast message, which is processed only by the recipient\n"
-		    "There's the possibility to limit the range of the wifi by changing the range attribute\n"
-		    "Any real number greater or equal than 0.0f is valid. In case the range is setted to 0.0f\n"
-		    "the transmission range is infinte and every wifi-equipped enabled entity will\n"
-		    "process the messages.\n"
-		    "REQUIRED XML CONFIGURATION\n\n"
+        "wifi","default",
+        "The wifi actuator",
+        "Marco Cinus [marco@idsia.ch]",
+        "This actuator access the wifi actuator of a wifi equipped entity (only footbots at this time)\n"
+        "For a complete description of its usage refer to the common interface\n"
+        "In this implementation the actuator is sending a message to all wifi-equipped entities\n"
+        "present in the space. Two sendings behaviors are provided for the sender, a broadcast message, which is \n"
+        "received and processed by all entities, and a unicast message, which is processed only by the recipient\n"
+        "There's the possibility to limit the range of the wifi by changing the range attribute\n"
+        "Any real number greater or equal than 0.0f is valid. In case the range is setted to 0.0f\n"
+        "the transmission range is infinte and every wifi-equipped enabled entity will\n"
+        "process the messages.\n"
+        "REQUIRED XML CONFIGURATION\n\n"
                      "  <controllers>\n"
                      "    ...\n"
                      "    <my_controller ...>\n"
@@ -144,6 +159,6 @@ namespace argos {
                      "    </my_controller>\n"
                      "    ...\n"
                      "  </controllers>\n\n",
-		    "UNDER DEVELOPMENT"
-		    );
+        "UNDER DEVELOPMENT"
+        );
 }

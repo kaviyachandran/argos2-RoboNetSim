@@ -68,6 +68,36 @@ namespace argos {
     virtual void BroadcastMessage(const std::string& str_payload,
 				  int f_delay = 0);
 
+        virtual void SendMessageTo_Local(const std::string& str_recipient,
+			       const std::string& str_payload,
+			       int f_delay = 0)
+    {}
+
+    virtual void SendBinaryMessageTo_Local(const std::string& str_recipient,
+			       const char *payload,
+			       size_t len,
+				     int f_delay = 0)
+    {}
+    virtual void BroadcastMessage_Local(const std::string& str_payload,
+				  int f_delay = 0)
+    {}
+    
+    virtual void SendMessageTo_Extern(const std::string& str_recipient,
+			       const std::string& str_payload,
+			       int f_delay = 0)
+    {}
+
+    virtual void SendBinaryMessageTo_Extern(const std::string& str_recipient,
+			       const char *payload,
+			       size_t len,
+					    int f_delay = 0)
+    {}
+    virtual void BroadcastMessage_Extern(const std::string& str_payload,
+				  int f_delay = 0)
+    {}
+
+
+
   private:
 
     CSpace& m_cSpace;
@@ -80,7 +110,41 @@ namespace argos {
     UInt8 tstTempCounter;
     UInt8 tstCounterLimit;
   };
+  
+  class CWiFiActuatorExternNamed : public CWiFiActuatorExtern {
+  public:
+    CWiFiActuatorExternNamed()
+    {
+      CWiFiActuatorExtern();
+    }
+    virtual ~CWiFiActuatorExternNamed() {}
 
+    virtual void Init(TConfigurationNode& t_tree)
+    {
+      CWiFiActuatorExtern::Init(t_tree);
+    }
+
+    inline virtual CEntity& GetEntity() {
+      
+      return CWiFiActuatorExtern::GetEntity();
+    }
+    virtual void SetEntity(CEntity& c_entity)
+    {
+      CWiFiActuatorExtern::SetEntity(c_entity);
+    }
+
+    virtual void Update()
+    {
+      CWiFiActuatorExtern::Update();
+    }
+    virtual void Reset()
+    {
+      CWiFiActuatorExtern::Reset();
+    }
+    
+
+  };
+    
 }
 
 #endif
