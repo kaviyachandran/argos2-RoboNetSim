@@ -26,7 +26,11 @@
 FootbotMissionAgents::FootbotMissionAgents() :
   RandomSeed(12345),
   m_Steps(0),
-  m_randomGen(0)
+  m_randomGen(0),
+  reachedTarget(false),
+  time_counter(0),
+  target_state(STATE_ARRIVED_AT_TARGET),
+  neighbour_agents_number(0)
 {
 }
 
@@ -63,7 +67,7 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
   m_pcWifiActuator = dynamic_cast<CCI_WiFiActuator* >(GetRobot().GetActuator("wifi"));
 
   //Led actuator
-   m_pcLEDs   = dynamic_cast<CCI_FootBotLedsActuator*>(GetRobot().GetActuator("footbot_leds"));
+  m_pcLEDs   = dynamic_cast<CCI_FootBotLedsActuator*>(GetRobot().GetActuator("footbot_leds"));
    
   /// create the client and pass the configuration tree (XML) to it
   m_navClient = new RVONavClient(m_myID, GetRobot());
@@ -75,6 +79,7 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
 
   /// initialize buffer
   m_socketMsg = new char[MAX_UDP_SOCKET_BUFFER_SIZE];
+
 
 }
 
@@ -98,69 +103,55 @@ FootbotDiffusionExample::sendStringPacketTo(int dest, const string msg)
 /// taking into account the current packet size
 /// valid for both simulation and real
 size_t
-FootbotMissionAgents::makeProfileMsg()
-{
-  uint32_t bcnt = 0;
-  char *cntptr = m_socketMsg;
-
-  /// put identifier (1)
-  /// #6: identifier - 0 (Mission Agent), 1 (Relay)
-  /// Identifier is used to find the source of message 
-
+FootbotMissionAgents::create_message_torelay(char* mes_ptr)
+{ 
+  long unsigned int initial_address = (long unsigned int)&(*mes_ptr);
+  // id --> 00 for agent sending profile data
   uint8_t identifier = 0;
-  memcpy(cntptr, &identifier, sizeof(identifier));
-  cntptr = cntptr + sizeof(identifier);
-  bcnt = bcnt + sizeof(identifier);
+  memcpy(mes_ptr, &identifier, sizeof(identifier));
+  mes_ptr += sizeof(identifier);
 
   /// put id (1)
   /// #1:  id  - uint8_t
-  uint8_t robot_id = (uint8_t) m_myID;
+  profile_message.agent_id = (uint8_t) m_myID;
   /// copy to the buffer
-  memcpy(cntptr, &robot_id, sizeof(robot_id));
-  cntptr += sizeof(robot_id);
-  bcnt += sizeof(robot_id);
+  memcpy(mes_ptr, &profile_message.agent_id, sizeof(profile_message.agent_id));
+  mes_ptr += sizeof(profile_message.agent_id);
   
   /// put timestamp (8)
   /// #2: timestamp - uint64_t
-  uint64_t tstamp = getTime();
-  memcpy(cntptr, &tstamp, sizeof(tstamp));
-  cntptr += sizeof(tstamp);
-  bcnt += sizeof(tstamp);
+  profile_message.time_message_sent = getTime();
+  memcpy(mes_ptr, &profile_message.time_message_sent, sizeof(profile_message.time_message_sent));
+  mes_ptr += sizeof(profile_message.time_message_sent);
   
   /// put position (x,y) (16)
   /// #3: x, y : double, double 
-  double nx = (double) m_navClient->currentPosition().GetX();
-  double ny = (double) m_navClient->currentPosition().GetY();
-  memcpy(cntptr,&nx, sizeof(nx));
-  cntptr += sizeof(nx);
-  bcnt += sizeof(nx);
-  memcpy(cntptr,&ny, sizeof(ny));
-  cntptr += sizeof(ny);
-  bcnt += sizeof(ny);
-
+  profile_message.agent_current_x = (double) m_navClient->currentPosition().GetX();
+  profile_message.agent_current_y = (double) m_navClient->currentPosition().GetY();
+  memcpy(mes_ptr,&profile_message.agent_current_x, sizeof(profile_message.agent_current_x));
+  mes_ptr += sizeof(profile_message.agent_current_x);
+  
+  memcpy(mes_ptr,&profile_message.agent_current_y, sizeof(profile_message.agent_current_y));
+  mes_ptr += sizeof(profile_message.agent_current_y);
+  
   /// put timestamp (8)
   /// #4: timestamp - uint64_t
-  uint64_t tlasttransmission = m_lastTxTime;
-  memcpy(cntptr, &tlasttransmission, sizeof(tlasttransmission));
-  cntptr += sizeof(tlasttransmission);
-  bcnt += sizeof(tlasttransmission);
+  profile_message.time_last_data_transmitted = m_lastTxTime;
+  memcpy(mes_ptr, &profile_message.time_last_data_transmitted, sizeof(profile_message.time_last_data_transmitted));
+  mes_ptr += sizeof(profile_message.time_last_data_transmitted);
+  
   m_lastTxTime = getTime();
 
   /// put numberofneighbors (1)
   /// #5: n_neighbors: uint8_t
-  uint8_t n_neigh = getNumberOfNeighbors();
-  memcpy(cntptr, &n_neigh, sizeof(n_neigh));
-  cntptr += sizeof(n_neigh);
-  bcnt += sizeof(n_neigh);
+  profile_message.number_neighbors = neighbour_agents_number;
+  memcpy(mes_ptr, &profile_message.number_neighbors, sizeof(profile_message.number_neighbors));
+  mes_ptr += sizeof(profile_message.number_neighbors);
   
+  long unsigned int final_address = (long unsigned int)&(*mes_ptr);
   
-
-  *cntptr = '\0';
-  cntptr+=1;
-  bcnt+=1;
-  
-  DEBUGCOMM("Composed MSG of size %d\n", bcnt);
-  return (size_t)bcnt;
+  DEBUGCOMM("Composed MSG of size %d\n", final_address-initial_address);
+  return (size_t)(final_address-initial_address);
 }
 
 UInt8
@@ -176,65 +167,104 @@ FootbotMissionAgents::randomWaypoint()
   Real x = m_randomGen->Uniform(CRange<Real>(1,5));
   Real y = m_randomGen->Uniform(CRange<Real>(1,5));
   CVector3 random_point(x,y,0);
- /* std::cout << "new random waypoint ("
-      << random_point.GetX()
-      << ", " <<  random_point.GetY()
-      << ")" << std::endl;*/
   return random_point;
 }
+
+void
+FootbotMissionAgents::getData()
+  {
+    char agent_data[MAX_UDP_SOCKET_BUFFER_SIZE];
+    char* data_ptr = agent_data;
+    long unsigned int initial_address =  (long unsigned int)&(*data_ptr);
+  
+    for(int i =0 ;i < 1000; i++)
+      {
+    
+        uint8_t a = 20;
+        memcpy(data_ptr,&a,sizeof(a));
+        data_ptr = data_ptr + sizeof(a);
+      }
+    
+    long unsigned int final_address =  (long unsigned int)&(*data_ptr);
+    size_t mes_size = (final_address-initial_address);
+    DEBUGCOMM("Message to be sent to Relay %d\n", mes_size);  
+  }
+
+
+void 
+FootbotMissionAgents::parse_message(std::vector<char> &m_incomingMsg)
+{
+char *cntptr = (char*)&m_incomingMsg[0];
+uint8_t sender_identifier = uint8_t(cntptr[0]);
+cntptr = cntptr + sizeof(sender_identifier);
+
+if(sender_identifier == 2)
+{ 
+  DEBUGCOMM("Received message from relay"); 
+  uint8_t relay_id = cntptr[0];
+  cntptr += sizeof(relay_id); 
+
+  // response to relay
+  size_t mes_size = create_message_torelay(m_socketMsg);
+  DEBUGCOMM("sending %d bytes to relay in range\n", mes_size);
+  std::ostringstream str_tmp(ostringstream::out);
+  str_tmp << "fb_" << relay_id;
+  string str_Dest = str_tmp.str();
+  m_pcWifiActuator->SendBinaryMessageTo(str_Dest.c_str(),m_socketMsg,mes_size);
+}
+else if(sender_identifier == 3)
+{ 
+  DEBUGCOMM("Relay requests data\n");
+  getData();
+}
+else if(sender_identifier == 0)
+{
+ // response to mission agent
+  neighbour_agents_number+=1;
+  DEBUGCOMM("Number of neighbours %d\n", neighbour_agents_number); 
+}
+
+}
+
 
   void 
 FootbotMissionAgents::ControlStep() 
 {
   m_Steps+=1;
+  neighbour_agents_number = 0;
+  
+  /*** send message to other agents ***/
+  char hello_message[5];
+  char *hello_msg_ptr = hello_message;
+  uint8_t mes_type_id = 0;
+  memcpy(hello_msg_ptr,&mes_type_id,sizeof(mes_type_id));
+  hello_msg_ptr += sizeof(mes_type_id);
+  m_pcWifiActuator->SendBinaryMessageTo("-1",hello_message,1);
 
-  /* do whatever */
-
-  /// every two seconds
-  if( m_Steps % 20 == 0)
-    {
-  /// This profile message is sent to relay robots using short communication range 
-      size_t psize = makeProfileMsg();
-      DEBUGCOMM("Sending MSG of size %d\n", 
-		psize); 
-	  m_pcWifiActuator->SendBinaryMessageTo("-1",
-						(char*)m_socketMsg,
-						psize);
-
-      printf("Hello. I'm %d - my current position (%.2f, %.2f) \n",
-       (int) m_myID,
-       m_navClient->currentPosition().GetX(),
-       m_navClient->currentPosition().GetY());
-
-      /// send network packet
-     if( m_myID != 1)
-  {
-    //printf("Hello. I'm %d - sending network packet\n", (int) m_myID);
-    //sendStringPacketTo(1, "hello");
-  } 
-    }
-
-  if( m_Steps % 50 == 0 && m_Steps > 1)
+  if(!reachedTarget)
     {
       CVector3 randomPoint = randomWaypoint();
       m_navClient->setTargetPosition( randomPoint );
       printf("Robot [%d] selected random point %.2f %.2f\n",
-       m_myID,
-       randomPoint.GetX(),
-       randomPoint.GetY());
+       m_myID,randomPoint.GetX(),randomPoint.GetY());
+      reachedTarget = true;
     }
-
+  else if(m_navClient->state() == target_state)
+    { 
+      //if(time_counter == 20)
+      reachedTarget = false;
+      //time_counter = 0;
+    }
 
  //searching for the received msgs
   TMessageList t_incomingMsgs;
   m_pcWifiSensor->GetReceivedMessages(t_incomingMsgs);
   for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
     {
-      std::string str_msg(it->Payload.begin(),
-        it->Payload.end());
-      std::cout << "[" << (int) m_myID << "] Received packet: "
-      << str_msg << std::endl;
-  } 
+      /// parse msg
+      DEBUGCOMM("Received %lu bytes to incoming buffer\n", it->Payload.size());
+      parse_message(it->Payload);
+    }
 
   
   ///  must call this two methods from navClient in order to
