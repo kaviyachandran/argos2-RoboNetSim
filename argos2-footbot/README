@@ -1,16 +1,31 @@
+*** INTRODUCTION ***
+
+In this package you'll find a controller that implements behaviour of relay, mission agents and base station with collision avoidance and navigation.
+
 **** Map Actuator has the following ***
 footbot_beacon => 0x27af278
 footbot_leds => 0x27af318
 footbot_wheels => 0x27abda8
 wifi => 0x27aab78
 
+*** Identifier code ***
+
+Relay:
+2 - Relay sending hello to mission agents
+3 - Relay sending acceptance to receive data
+
+Agents:
+0 - Agent sending profile data to relay
+1 - Agent sending data to relay after receiving acceptance 
 
 
-*** INTRODUCTION ***
+*** choosing Mission Agent to collect data ***
 
-In this package you'll find a controller that implements multi-robot
-collision avoidance and navigation
+Now relay responds to the mision agents based on the order it receives message from mission agents.
 
+Should the relay respond to the agent which is farthest from it or based on the amount of data it has to transmit ? 
+
+How does relay prioritize among agents?
 
 
 
