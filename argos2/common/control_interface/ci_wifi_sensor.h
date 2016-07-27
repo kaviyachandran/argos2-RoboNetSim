@@ -51,31 +51,31 @@ namespace argos {
       Recipient("0"){}
 
   CMessage(const std::string& str_sender,
-	   const std::string& str_recipient,
-	   const std::string& str_payload,
-	   int f_delay) :
+     const std::string& str_recipient,
+     const std::string& str_payload,
+     int f_delay) :
     Sender(str_sender),
       Recipient(str_recipient),
       Delay(f_delay)
       {
-	for(unsigned int i=0; (unsigned int)i< str_payload.size(); i++)
-	  Payload.push_back(str_payload[i]);
-//	std::copy( str_payload.begin(), str_payload.end(),
-//		  Payload.begin()); 
+  for(unsigned int i=0; (unsigned int)i< str_payload.size(); i++)
+    Payload.push_back(str_payload[i]);
+//  std::copy( str_payload.begin(), str_payload.end(),
+//      Payload.begin()); 
       }
   CMessage(const std::string& str_sender,
-	   const std::string& str_recipient,
-	   const char *payload,
-	   size_t len,
-	   int f_delay) :
+     const std::string& str_recipient,
+     const char *payload,
+     size_t len,
+     int f_delay) :
     Sender(str_sender),
       Recipient(str_recipient),
       Delay(f_delay)
       {
-	for(unsigned int i=0; (unsigned int)i<len; i++)
-	  Payload.push_back(payload[i]);
-//	std::copy( payload, payload + len, 
-//		   Payload.begin());
+  for(unsigned int i=0; (unsigned int)i<len; i++)
+    Payload.push_back(payload[i]);
+//  std::copy( payload, payload + len, 
+//       Payload.begin());
       }
 #if 0
   CMessage (const CMessage &m) 
@@ -144,10 +144,12 @@ namespace argos {
     virtual ~CCI_WiFiSensor() {}
 
     virtual void GetReceivedMessages(TMessageList& t_messages) = 0;
+    virtual void GetReceivedMessages_Local(TMessageList& t_messages) = 0;
+    virtual void GetReceivedMessages_Extern(TMessageList& t_messages) = 0;
 
     /*Added by michal*/
-    virtual void GetPositionInfo(CVector3& position) = 0;	// Possibility to obtain coordinates via this sensor (thus, may also work as a virtual, ideal GPS-like device)
-    virtual void GetOrientationInfo(CQuaternion& orientation) = 0;	// Similarly, obtain the robot's orientation
+    virtual void GetPositionInfo(CVector3& position) = 0; // Possibility to obtain coordinates via this sensor (thus, may also work as a virtual, ideal GPS-like device)
+    virtual void GetOrientationInfo(CQuaternion& orientation) = 0;  // Similarly, obtain the robot's orientation
 
   };
 

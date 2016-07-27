@@ -36,12 +36,12 @@ namespace argos {
    class CCI_WiFiActuator : virtual public CCI_Actuator {
 
    public:
-	/*
+  /*
       class SMessage {
          std::string Sender;
          std::string Recipient;
          std::string Payload;
-	public:
+  public:
          SMessage() {}
          SMessage(const std::string& str_sender,
                   const std::string& str_recipient,
@@ -70,15 +70,41 @@ namespace argos {
 
       virtual void SendBinaryMessageTo(const std::string& str_recipient,
                                  const char * payload,
-				 size_t len,
+         size_t len,
                                  int f_delay = 0) = 0;
 
+      virtual void SendMessageTo_Extern(const std::string& str_recipient,
+                                 const std::string& str_payload,
+                                 int f_delay = 0) = 0;
+
+      virtual void SendBinaryMessageTo_Extern(const std::string& str_recipient,
+                                 const char * payload,
+         size_t len,
+                                 int f_delay = 0) = 0;
+
+      virtual void SendMessageTo_Local(const std::string& str_recipient,
+                                 const std::string& str_payload,
+                                 int f_delay = 0) = 0;
+
+      virtual void SendBinaryMessageTo_Local(const std::string& str_recipient,
+                                 const char * payload,
+         size_t len,
+                                 int f_delay = 0) = 0;
+
+      
       /**
        * Broadcasts a message.
        * @param str_payload The message payload
        * @param f_delay The sending delay (in seconds? milliseconds?)
        */
       virtual void BroadcastMessage(const std::string& str_payload,
+                                    int f_delay = 0) = 0;
+
+      virtual void BroadcastMessage_Local(const std::string& str_payload,
+                                    int f_delay = 0) = 0;
+      
+
+      virtual void BroadcastMessage_Extern(const std::string& str_payload,
                                     int f_delay = 0) = 0;
 
    };
