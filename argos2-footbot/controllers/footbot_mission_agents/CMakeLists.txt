@@ -6,6 +6,8 @@ set(footbot_mission_agents_IMPLEMENTATIONS
   footbot_mission_agents.cpp
   )
 
+add_definitions(-std=c++11)
+
 #include_directories(${CMAKE_CURRENT_SOURCE_DIR}/navigation/lcm)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories( ${CMAKE_SOURCE_DIR}/controllers)
