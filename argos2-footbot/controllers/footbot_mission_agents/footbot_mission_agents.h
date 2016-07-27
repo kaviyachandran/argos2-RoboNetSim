@@ -17,8 +17,10 @@
 #include <string.h>
 #include <termios.h>
 #include <math.h>
+#include <unistd.h>
 #include <argos2/common/control_interface/swarmanoid/footbot/ci_footbot_encoder_sensor.h>
 #include <navigation/client/nav_client.h>
+#include <include/constants.hpp>
 
 using namespace argos;
 using namespace std;
@@ -49,10 +51,29 @@ class FootbotMissionAgents: public CCI_Controller
 
     UInt8 getNumberOfNeighbors();
 
-    size_t makeProfileMsg();
-    //void parseMessage(size_t );
-   
+    size_t create_message_torelay(char* message);
+    bool reachedTarget;
+    RobotNavState target_state;
+    uint8_t time_counter;
+    uint8_t neighbour_agents_number;
+    void parse_message(vector<char>& received_message);
+    void getData();
     
+    struct Agent_profile_message
+   {
+        uint32_t message_size;
+        uint8_t agent_id;
+        double agent_current_x;
+        double agent_current_y;
+        uint64_t time_message_sent;
+        // Neighbors are mission agents
+        uint8_t number_neighbors;
+        uint64_t time_last_data_transmitted;
+    };  
+
+    struct Agent_profile_message profile_message;
+
+
   public:
 
     /* Class constructor. */
@@ -73,7 +94,7 @@ class FootbotMissionAgents: public CCI_Controller
    // void sendStringPacketTo(int dest, const string msg);
     CVector3 randomWaypoint();
       
-
+    
 };
 
 #endif

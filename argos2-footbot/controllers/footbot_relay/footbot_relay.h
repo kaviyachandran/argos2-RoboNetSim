@@ -20,8 +20,10 @@
 #include <argos2/common/control_interface/swarmanoid/footbot/ci_footbot_encoder_sensor.h>
 #include <navigation/client/nav_client.h>
 #include <map>
+#include <set>
 #include <boost/tokenizer.hpp>
 #include <vector>
+#include <queue>
 #include <sstream>
 #include <include/constants.hpp>
 #include <iterator>   
@@ -31,7 +33,7 @@
 using namespace argos;
 using namespace std;
 using namespace boost;
-using namespace constants;
+
 
 #include <argos2/common/utility/datatypes/datatypes.h>
 
@@ -68,39 +70,46 @@ class FootbotRelay: public CCI_Controller
     CVector3 position;
     UInt8 counter;
     char *m_incomingMsg;
-    void parseMessage(std::vector<char> &v);
-
+    void parse_relay_message(std::vector<char> &v);
+    void parse_agent_message(std::vector<char> &v);
+    
     char *m_relaySocketMsg;
     
     UInt8 getNeighbourInfo();
 
     size_t createProfileMessage(char* msg);
-    
+    size_t createMessageToMissionAgents(char* m);
+    size_t get_data_from_missionagents(char* data,uint8_t id);
+    Constants constant; 
     
     int min,max;
-    
-    
-    
-   struct LastserviceInfo
-    {
-        uint8_t lastserved_station_id;
-        uint64_t previousTxTime;
-        double initialX, initialY;
-    };
-    
-    struct LastserviceInfo lastserviceInfo;
-    
-    // Map with id and position of neighbours.
-    typedef std::map<uint8_t,std::vector<double> > NeighbourMap;
-    
-    NeighbourMap neighbourRobot;
-    NeighbourMap neighbourRelay;
-    /// variables used for received message
 
-    struct LastserviceInfo received_lastserviceInfo;
-    uint8_t targetBaseStation;
-    NeighbourMap received_neighbour_info;
-    NeighbourMap baseStationPosition;
+    // agent ids are stored in the order of response 
+    //from agents to relays and served FIFO
+    
+    std::queue<uint8_t> agent_ids;
+    std::set<uint8_t> check_set;
+    
+   struct Relay_profile_message
+   {
+        uint32_t message_size;
+        uint8_t relay_id;
+        double relay_current_x;
+        double relay_current_y;
+        uint64_t time_message_sent;
+        // Neighbors are mission agents
+        uint8_t number_neighbors;
+        uint8_t target_basestation;
+        uint64_t last_served_time;
+        uint8_t last_served_basestation;
+    };  
+  
+    struct Relay_profile_message relay_message;
+    struct Relay_profile_message received_relay_message;
+    //static int number_of_times = 0;
+    
+
+    map<uint8_t,vector<double> > baseStationPosition;
     vector<double> getBaseStationPositions(TConfigurationNode node);
     
   public:
