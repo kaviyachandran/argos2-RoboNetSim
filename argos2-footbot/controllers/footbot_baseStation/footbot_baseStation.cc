@@ -54,7 +54,7 @@ FootbotBaseStation::Init(TConfigurationNode& t_node)
   m_navClient->init(t_node);
 
   /// start the navigation client
-  m_navClient->start();
+  //m_navClient->start();
   
   /// Sets color to all leds
   m_pcLEDs->SetAllColors(CColor::RED);
@@ -88,14 +88,14 @@ FootbotBaseStation::ControlStep()
    m_pcWifiSensor->GetReceivedMessages_Local(t_incomingMsgs);
    for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++){
 	   
-	   std::cout << m_myID << " received packet from " << it->Sender << std::endl;
+	   printf("%d received packet from \n", m_myID); 
     }
   
   ///  must call this two methods from navClient in order to
   ///  update the navigation controller
   m_pcLEDs->SetAllColors(CColor::RED);
   m_navClient->setTime(getTime());
-  m_navClient->update();
+  //m_navClient->update();
 }
 
 

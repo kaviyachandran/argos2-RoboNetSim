@@ -21,6 +21,7 @@
 #include <argos2/common/control_interface/swarmanoid/footbot/ci_footbot_encoder_sensor.h>
 #include <navigation/client/nav_client.h>
 #include <include/constants.hpp>
+#include <fstream>
 
 using namespace argos;
 using namespace std;
@@ -59,6 +60,13 @@ class FootbotMissionAgents: public CCI_Controller
     void parse_message(vector<char>& received_message);
     void getData();
     
+    // file to store data
+    ofstream data_file;
+    //ofstream sent_message_file;
+
+    string filename;
+    //string sent_file;
+    
     struct Agent_profile_message
    {
         uint32_t message_size;
@@ -72,7 +80,10 @@ class FootbotMissionAgents: public CCI_Controller
     };  
 
     struct Agent_profile_message profile_message;
+    uint64_t generated_data_size;
+    size_t getData(char* ptr);
 
+    
 
   public:
 

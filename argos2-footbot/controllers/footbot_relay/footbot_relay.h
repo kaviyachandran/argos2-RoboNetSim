@@ -62,7 +62,7 @@ class FootbotRelay: public CCI_Controller
     vector<std::string> strVector;
     bool changePos;
     
-
+    vector<vector<char> > data_from_agents;
     typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
     boost::char_separator<char> sep;
     
@@ -79,9 +79,11 @@ class FootbotRelay: public CCI_Controller
 
     size_t createProfileMessage(char* msg);
     size_t createMessageToMissionAgents(char* m);
-    size_t get_data_from_missionagents(char* data,uint8_t id);
+    size_t send_collected_data(char *data);
+    size_t get_data_from_missionagents(char* data);
     Constants constant; 
-    
+
+    uint8_t neighbour_count;
     int min,max;
 
     // agent ids are stored in the order of response 
@@ -108,9 +110,34 @@ class FootbotRelay: public CCI_Controller
     struct Relay_profile_message received_relay_message;
     //static int number_of_times = 0;
     
+    struct Agent_profile_message
+   {
+        uint32_t message_size;
+        uint8_t agent_id;
+        double agent_current_x;
+        double agent_current_y;
+        uint64_t time_message_sent;
+        // Neighbors are mission agents
+        uint8_t number_neighbors;
+        uint64_t time_last_data_transmitted;
+    };  
+
+    struct Agent_profile_message agent_message;
 
     map<uint8_t,vector<double> > baseStationPosition;
     vector<double> getBaseStationPositions(TConfigurationNode node);
+
+    ofstream data_file;
+    string filename;
+
+    ofstream received_message_file;
+    string received_file;
+
+    ofstream meeting_data_file;
+    string meeting_file;
+
+    vector<uint8_t> agents;
+    vector<uint8_t> data_exchange_agents;
     
   public:
 

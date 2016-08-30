@@ -47,10 +47,9 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
     atoi(GetRobot().GetRobotId().substr(7).c_str());
 #endif
   printf("MyID %d\n", m_myID);
-
+ 
   /// Random
   GetNodeAttributeOrDefault(t_node, "RandomSeed", RandomSeed, RandomSeed);
-
 
   if( m_randomGen == NULL )
     {
@@ -80,6 +79,13 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
   /// initialize buffer
   m_socketMsg = new char[MAX_UDP_SOCKET_BUFFER_SIZE];
 
+   // file to save the data
+  filename = "data_"+ to_string(m_myID)+".csv";
+  data_file.open(filename);
+
+  //sent_file = "sent_data.csv";
+  //sent_message_file.open(sent_file);
+  //sent_message_file << "Time_step" << "," <<"Sender" << "," <<"Receiver" << "\n";
 
 }
 
@@ -107,10 +113,14 @@ FootbotMissionAgents::create_message_torelay(char* mes_ptr)
 { 
   long unsigned int initial_address = (long unsigned int)&(*mes_ptr);
   // id --> 00 for agent sending profile data
-  uint8_t identifier = 0;
+  char identifier = 'a';
   memcpy(mes_ptr, &identifier, sizeof(identifier));
   mes_ptr += sizeof(identifier);
-
+  
+  uint32_t mes_size;
+  profile_message.message_size = mes_size;
+  memcpy(mes_ptr, &profile_message.message_size,sizeof(profile_message.message_size));
+  mes_ptr = mes_ptr + sizeof(profile_message.message_size);
   /// put id (1)
   /// #1:  id  - uint8_t
   profile_message.agent_id = (uint8_t) m_myID;
@@ -151,7 +161,8 @@ FootbotMissionAgents::create_message_torelay(char* mes_ptr)
   long unsigned int final_address = (long unsigned int)&(*mes_ptr);
   
   DEBUGCOMM("Composed MSG of size %d\n", final_address-initial_address);
-  return (size_t)(final_address-initial_address);
+  mes_size = (final_address-initial_address);
+  return (size_t)mes_size;
 }
 
 UInt8
@@ -164,30 +175,38 @@ CVector3
 FootbotMissionAgents::randomWaypoint()
 {
   /// generate point in the square (1,5) x (1,5)
-  Real x = m_randomGen->Uniform(CRange<Real>(1,5));
-  Real y = m_randomGen->Uniform(CRange<Real>(1,5));
+  Real x = m_randomGen->Uniform(CRange<Real>(-12,12));
+  Real y = m_randomGen->Uniform(CRange<Real>(-12,12));
   CVector3 random_point(x,y,0);
   return random_point;
 }
 
-void
-FootbotMissionAgents::getData()
+size_t
+FootbotMissionAgents::getData(char* data_ptr)
   {
-    char agent_data[MAX_UDP_SOCKET_BUFFER_SIZE];
-    char* data_ptr = agent_data;
     long unsigned int initial_address =  (long unsigned int)&(*data_ptr);
-  
+    
+    char mes_type_id = 'b';
+    memcpy(data_ptr,&mes_type_id,sizeof(mes_type_id));
+    data_ptr = data_ptr + sizeof(mes_type_id);
+
+    memcpy(data_ptr,&generated_data_size,sizeof(generated_data_size));
+    data_ptr = data_ptr + sizeof(generated_data_size);
+    
     for(int i =0 ;i < 1000; i++)
       {
     
-        uint8_t a = 20;
+        uint8_t a = 99;
         memcpy(data_ptr,&a,sizeof(a));
         data_ptr = data_ptr + sizeof(a);
       }
     
     long unsigned int final_address =  (long unsigned int)&(*data_ptr);
-    size_t mes_size = (final_address-initial_address);
-    DEBUGCOMM("Message to be sent to Relay %d\n", mes_size);  
+    
+    generated_data_size = (final_address-initial_address);
+
+    DEBUGCOMM("Generated size of Data to be sent to Relay %d\n", generated_data_size); 
+    return (size_t)generated_data_size; 
   }
 
 
@@ -195,29 +214,51 @@ void
 FootbotMissionAgents::parse_message(std::vector<char> &m_incomingMsg)
 {
 char *cntptr = (char*)&m_incomingMsg[0];
-uint8_t sender_identifier = uint8_t(cntptr[0]);
+char sender_identifier = char(cntptr[0]);
 cntptr = cntptr + sizeof(sender_identifier);
+DEBUGCOMM("relay message type %c \n",char(sender_identifier)); 
 
-if(sender_identifier == 2)
+if(sender_identifier == 'c')
 { 
-  DEBUGCOMM("Received message from relay"); 
+
   uint8_t relay_id = cntptr[0];
   cntptr += sizeof(relay_id); 
+  DEBUGCOMM("Received message from relay %d \n",relay_id); 
 
   // response to relay
   size_t mes_size = create_message_torelay(m_socketMsg);
-  DEBUGCOMM("sending %d bytes to relay in range\n", mes_size);
+  DEBUGCOMM("sending %d bytes to relay %d in range\n", mes_size, relay_id);
   std::ostringstream str_tmp(ostringstream::out);
   str_tmp << "fb_" << relay_id;
   string str_Dest = str_tmp.str();
+  
   m_pcWifiActuator->SendBinaryMessageTo(str_Dest.c_str(),m_socketMsg,mes_size);
 }
-else if(sender_identifier == 3)
+else if(sender_identifier == 'd')
 { 
-  DEBUGCOMM("Relay requests data\n");
-  getData();
+  
+  uint8_t relay_id = cntptr[0];
+  cntptr += sizeof(relay_id); 
+  DEBUGCOMM("Received message from relay %d \n",relay_id); 
+
+
+  char agent_data[MAX_UDP_SOCKET_BUFFER_SIZE];
+  DEBUGCOMM("Relay %d requests data\n",relay_id);
+  
+  size_t data_size = getData(agent_data);
+  
+  
+  std::ostringstream str_tmp(ostringstream::out);
+  str_tmp << "fb_" << relay_id;
+  string str_Dest = str_tmp.str();
+  
+  DEBUGCOMM("sending %d bytes to relay %s in range\n", data_size,str_Dest.c_str());
+
+  m_pcWifiActuator->SendBinaryMessageTo(str_Dest.c_str(),agent_data,data_size);
+
 }
-else if(sender_identifier == 0)
+
+else if(sender_identifier == 'm')
 {
  // response to mission agent
   neighbour_agents_number+=1;
@@ -229,14 +270,18 @@ else if(sender_identifier == 0)
 
   void 
 FootbotMissionAgents::ControlStep() 
-{
+{ 
   m_Steps+=1;
   neighbour_agents_number = 0;
   
+  /*** Saving the waypoints ***/
+  if(m_Steps % 5 == 0 && m_Steps > 2)
+    data_file << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
+ 
   /*** send message to other agents ***/
   char hello_message[5];
   char *hello_msg_ptr = hello_message;
-  uint8_t mes_type_id = 0;
+  uint8_t mes_type_id = 'm';
   memcpy(hello_msg_ptr,&mes_type_id,sizeof(mes_type_id));
   hello_msg_ptr += sizeof(mes_type_id);
   m_pcWifiActuator->SendBinaryMessageTo("-1",hello_message,1);
@@ -262,7 +307,12 @@ FootbotMissionAgents::ControlStep()
   for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
     {
       /// parse msg
-      DEBUGCOMM("Received %lu bytes to incoming buffer\n", it->Payload.size());
+      DEBUGCOMM("Received %lu bytes to incoming buffer \n", it->Payload.size());
+      
+    vector<char> check_message = it->Payload;
+    DEBUGCOMM("Identifier of received message [extern] %c\n",char(check_message[0]));
+    
+    if((char)check_message[0] == 'c' || (char)check_message[0] == 'd' || (char)check_message[0] == 'm')
       parse_message(it->Payload);
     }
 

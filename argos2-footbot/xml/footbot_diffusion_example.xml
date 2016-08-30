@@ -49,7 +49,7 @@
       </sensors>
       <parameters alpha="7.5" delta="0.001" velocity="10" interval="10" generators="0.4">
 
-	     <optimalSpeed>0.2</optimalSpeed>
+	     <optimalSpeed>0.05</optimalSpeed>
 	     <safetyMargin>0.1</safetyMargin>
 	     <socialMargin>0.1</socialMargin>
 	     <resolution>201</resolution>
@@ -71,10 +71,16 @@
 	<!-- Min distance from the current position to the target position to determine it this is reached (meters)-->
 	     <targetMinPointDistance>0.12</targetMinPointDistance>
 	<!-- Area bounds -->
+  <!--
 	     <originAreaX>0.0</originAreaX>
 	     <originAreaY>0.0</originAreaY>
 	     <destinationAreaX>8.0</destinationAreaX>
 	     <destinationAreaY>6.5</destinationAreaY>
+  -->
+       <originAreaX>-25.0</originAreaX>
+       <originAreaY>-25.0</originAreaY>
+       <destinationAreaX>25.0</destinationAreaX>
+       <destinationAreaY>25.0</destinationAreaY>
      </parameters>
 
    
@@ -101,10 +107,10 @@
 
         <led_debugging leds="true" beacon="true" beacon_intensity="10"/>
          <!-- Area bounds -->
-       <originAreaX>0.0</originAreaX>
-       <originAreaY>0.0</originAreaY>
-       <destinationAreaX>8.0</destinationAreaX>
-       <destinationAreaY>6.5</destinationAreaY>
+       <originAreaX>-25.0</originAreaX>
+       <originAreaY>-25.0</originAreaY>
+       <destinationAreaX>25.0</destinationAreaX>
+       <destinationAreaY>25.0</destinationAreaY>
 
       </parameters>
 
@@ -114,7 +120,7 @@
     
      <!-- controller for the relay robot-->
      
-      <footbot_relay_controller id="frelay" 
+    <footbot_relay_controller id="frelay" 
       library="build/controllers/footbot_relay/libfootbot_relay.so">
     
        <actuators>
@@ -161,15 +167,15 @@
        <targetMinPointDistance>0.70</targetMinPointDistance>
   <!-- Area bounds -->
  
-       <originAreaX>0.0</originAreaX>
-       <originAreaY>0.0</originAreaY>
-       <destinationAreaX>8.0</destinationAreaX>
-       <destinationAreaY>6.5</destinationAreaY>
+       <originAreaX>-25.0</originAreaX>
+       <originAreaY>-25.0</originAreaY>
+       <destinationAreaX>25.0</destinationAreaX>
+       <destinationAreaY>25.0</destinationAreaY>
 
-       <NumberOfBaseStation param="3"/>
-       <BaseStation1 param="position" x="1.2" y="1.0"/>
-       <BaseStation2 param="position" x="4.2" y="4.8"/>
-       <BaseStation3 param="position" x="1.0" y="2.5"/>
+       <NumberOfBaseStation param="2"/>
+       <BaseStation1 param="position" x="-10.0" y="1.0"/>
+       <BaseStation2 param="position" x="4.3" y="-8.5"/>
+       <!--<BaseStation3 param="position" x="12.2" y="-10.8"/-->
     </parameters>
     </footbot_relay_controller>
    
@@ -179,8 +185,9 @@
   <!-- *********************** -->
   <!-- * Arena configuration * -->
   <!-- *********************** -->
-
-    <arena size="10, 10, 1">
+  
+  <!--
+  <arena size="10, 10, 1">
 
    <box id="wall_north"
 	 position="25,50,0"
@@ -202,7 +209,30 @@
 	 orientation="0,0,0"
 	 size="0.1,50,0.5"
 	 movable="false" />
+  -->  
 
+  <arena size="25, 25, 1">
+
+    <box id="wall_north"
+         position="0,12,0.25"
+         orientation="0,0,0"
+         size="24,0.1,0.5"
+         movable="false" />
+    <box id="wall_south"
+         position="0,-12,0.25"
+         orientation="0,0,0"
+         size="24,0.1,0.5"
+         movable="false" />
+    <box id="wall_east"
+         position="12,0,0.25"
+         orientation="0,0,0"
+         size="0.1,24,0.5"
+         movable="false" />
+    <box id="wall_west"
+         position="-12,0,0.25"
+         orientation="0,0,0"
+         size="0.1,24,0.5"
+         movable="false" />
 
     <!--
         You can distribute entities randomly. Here, we distribute
@@ -215,32 +245,39 @@
     -->
 
     <foot-bot id="fb_0"
-	      position="-3,-3,0"
+	      position="-15.0,-15.0,0"
 	      orientation="1,1,0"
 	      wifi_enabled="false"
 	      controller="fcentral" />
     
     <foot-bot id="fb_1"
-        position="1.2,1.0,0"
+        position="-10.0,1.0,0"
         orientation="1,1,0"
         wifi_enabled="true"
         controller="fbase" />
 
     <foot-bot id="fb_2"
-        position="1.0,2.5,0"
+        position="4.3,-8.5,0"
         orientation="1,1,0"
         wifi_enabled="true"
         controller="fbase" />
 
     <foot-bot id="fb_3"
-        position="4.2,4.8,0"
+        position="4.0,-8.0,0"
+        orientation="1,1,0"
+        wifi_enabled="true"
+        controller="frelay" />
+
+   <!-- <foot-bot id="fb_3"
+        position="12.2,-10.8,0"
         orientation="1,1,0"
         wifi_enabled="true"
         controller="fbase" />
 
     
+
     
-    <!--
+    
     <distribute>
       <position method="uniform" min="1,1,0" max="5,5,0" />
       <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
@@ -248,29 +285,30 @@
       <foot-bot id="fb" controller="fbase" />
       </entity>
     </distribute>
-    -->
-
+    
+   
     <distribute>
-      <position method="uniform" min="1,1,0" max="5,5,0" />
+      <position method="uniform" min="-12,-12,0" max="12,12,0" />
       <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
-      <entity quantity="3" max_trials="100" base_num="4" >
+      <entity quantity="4" max_trials="100" base_num="4" >
       <foot-bot id="fb" controller="fnav" />
       </entity>
-    </distribute>
+    </distribute> 
+    
     
     
     <distribute>
-      <position method="uniform" min="1,1,0" max="5,5,0" />
+      <position method="uniform" min="-12,-12,0" max="12,12,0" />
       <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
-      <entity quantity="2" max_trials="100" base_num="7" >
+      <entity quantity="1" max_trials="100" base_num="3" >
       <foot-bot id="fb" controller="frelay" />
       </entity>
-    </distribute>
+    </distribute>-->
    
     <!--
 	this is necessary for robonetsim
     -->
-    <wifi-medium id="wm" number_of_nodes="8"/>
+    <wifi-medium id="wm" number_of_nodes="3"/>
   </arena>
   <media>
     <led id="leds" />
@@ -305,12 +343,13 @@
   <!-- ****************** -->
   <visualization>
     <qtopengl_render splash="false">
-	<camera>
+	<!--<camera>
 		<placement idx="0" position="0,0,1" look_at="0,0,0" />
-		<placement idx="1" position="5,0,1" look_at="5,0,0" />
-		<placement idx="2" position="0,5,1" look_at="0,5,0" />
-		<placement idx="3" position="5,5,1" look_at="5,5,0" />
+		<placement idx="1" position="10,0,1" look_at="10,0,0" />
+		<placement idx="2" position="0,10,1" look_at="0,10,0" />
+		<placement idx="3" position="10,10,1" look_at="10,10,0" />
 	</camera>
+  -->
     </qtopengl_render>  
   </visualization>
 

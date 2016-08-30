@@ -1202,7 +1202,9 @@ RVONavClient::setFixedObstacles(std::vector<CVector2> obstaclesPoints)
 {
   std::vector<CVector2>::iterator it;
   for (unsigned int i = 0; i < obstaclesPoints.size(); i++) 
-  {
+  { 
+    CVector2 points = obstaclesPoints[i];
+    //printf("[%d] Obstacle points / area bounds, %f, %f\n", m_myID,points.GetX(), points.GetY());
     agent->addObstacleAtPoint(obstaclesPoints[i], OBSTACLE_RADIUS);
   }
 }
