@@ -20,8 +20,9 @@
 #include <unistd.h>
 #include <argos2/common/control_interface/swarmanoid/footbot/ci_footbot_encoder_sensor.h>
 #include <navigation/client/nav_client.h>
-#include <include/constants.hpp>
 #include <fstream>
+
+#define PI 3.14159265
 
 using namespace argos;
 using namespace std;
@@ -51,11 +52,19 @@ class FootbotMissionAgents: public CCI_Controller
     uint64_t m_lastTxTime;
 
     UInt8 getNumberOfNeighbors();
+    
+    /// constant number of targets
+    uint8_t number_of_targets; 
+    uint16_t predicted_timesteps;
+    uint8_t interval;
+    vector<double> target_positions;
+    double optimal_speed;
+    double min_distance_to_target;
 
     size_t create_message_torelay(char* message);
     bool reachedTarget;
     RobotNavState target_state;
-    uint8_t time_counter;
+    
     uint8_t neighbour_agents_number;
     void parse_message(vector<char>& received_message);
     void getData();
@@ -77,13 +86,17 @@ class FootbotMissionAgents: public CCI_Controller
         // Neighbors are mission agents
         uint8_t number_neighbors;
         uint64_t time_last_data_transmitted;
+        vector<double> positions_predicted;
     };  
 
     struct Agent_profile_message profile_message;
     uint64_t generated_data_size;
     size_t getData(char* ptr);
 
-    
+    // Map to store the id of relay and at what time step info about agent is sent
+    // to make sure info is only sent every 20 seconds though they are in contact
+    map<uint8_t, uint32_t> relays_met;
+
 
   public:
 
@@ -102,10 +115,14 @@ class FootbotMissionAgents: public CCI_Controller
 
     static std::string getTimeStr();
     UInt64 getTime();
+    double distance(double a, double b,  double c, double d);
    // void sendStringPacketTo(int dest, const string msg);
     CVector3 randomWaypoint();
-      
+
+    vector<double>  calculated_positions(uint16_t timesteps_number,uint8_t interval);
+    vector<double> approximate_pos(vector<double> curr_pos,std::vector<uint16_t> &t, uint16_t number_timesteps, double optimal_speed, vector<double> &target_positions, uint8_t interval);
     
+    void Testing();
 };
 
 #endif

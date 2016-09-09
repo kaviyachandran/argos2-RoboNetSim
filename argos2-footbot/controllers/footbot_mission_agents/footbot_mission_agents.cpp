@@ -27,10 +27,13 @@ FootbotMissionAgents::FootbotMissionAgents() :
   RandomSeed(12345),
   m_Steps(0),
   m_randomGen(0),
-  reachedTarget(false),
-  time_counter(0),
+  reachedTarget(true),
+  predicted_timesteps(3600),
   target_state(STATE_ARRIVED_AT_TARGET),
-  neighbour_agents_number(0)
+  neighbour_agents_number(0),
+  interval(10),
+  optimal_speed(0.05),
+  min_distance_to_target(0.2)
 {
 }
 
@@ -50,6 +53,11 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
  
   /// Random
   GetNodeAttributeOrDefault(t_node, "RandomSeed", RandomSeed, RandomSeed);
+  GetNodeAttributeOrDefault(t_node, "optimalSpeed", optimal_speed, optimal_speed);
+  GetNodeAttributeOrDefault(t_node, "targetMinPointDistance", min_distance_to_target, min_distance_to_target);
+  
+
+  cout << "speed " << optimal_speed << endl; 
 
   if( m_randomGen == NULL )
     {
@@ -79,6 +87,16 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
   /// initialize buffer
   m_socketMsg = new char[MAX_UDP_SOCKET_BUFFER_SIZE];
 
+  //initialise target position list with few(10) random positions
+  for(int i =0; i<20; i++)
+  {
+    CVector3 temp = randomWaypoint();
+    target_positions.push_back(temp[0]);
+    target_positions.push_back(temp[1]);
+  }
+ 
+   
+
    // file to save the data
   filename = "data_"+ to_string(m_myID)+".csv";
   data_file.open(filename);
@@ -90,34 +108,17 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
 }
 
 
-/*void
-FootbotDiffusionExample::sendStringPacketTo(int dest, const string msg)
-{
-  std::ostringstream str(ostringstream::out);
-  m_sendPackets++;
-  std::ostringstream str_tmp(ostringstream::out);
-  str_tmp << "fb_" << dest;
-  string str_Dest = str_tmp.str();
-  
-  str << "Hi I'm " << (int) m_myID << " and I say \"" << msg << "\" to " << str_Dest;
-  std::cout << str.str() << std::endl;
-  m_pcWifiActuator->SendMessageTo(str_Dest, str.str());
-}*/
-
-
-/// fills the buffer with a new msg content,
-/// taking into account the current packet size
-/// valid for both simulation and real
 size_t
 FootbotMissionAgents::create_message_torelay(char* mes_ptr)
 { 
   long unsigned int initial_address = (long unsigned int)&(*mes_ptr);
+  uint32_t mes_size = 0;
   // id --> 00 for agent sending profile data
   char identifier = 'a';
   memcpy(mes_ptr, &identifier, sizeof(identifier));
   mes_ptr += sizeof(identifier);
   
-  uint32_t mes_size;
+  
   profile_message.message_size = mes_size;
   memcpy(mes_ptr, &profile_message.message_size,sizeof(profile_message.message_size));
   mes_ptr = mes_ptr + sizeof(profile_message.message_size);
@@ -158,10 +159,25 @@ FootbotMissionAgents::create_message_torelay(char* mes_ptr)
   memcpy(mes_ptr, &profile_message.number_neighbors, sizeof(profile_message.number_neighbors));
   mes_ptr += sizeof(profile_message.number_neighbors);
   
+  /// timestep
+  memcpy(mes_ptr, &m_myID, sizeof(m_Steps));
+  mes_ptr += sizeof(m_Steps);
+  
+  vector<double> pos = calculated_positions(predicted_timesteps,interval); 
+  profile_message.positions_predicted = pos;
+    
   long unsigned int final_address = (long unsigned int)&(*mes_ptr);
+  DEBUGCOMM("before vecctor %d\n", final_address-initial_address); 
+
+  /// #6: 20 future target positions 
+  memcpy(mes_ptr, pos.data(), pos.size()*sizeof(double));
+  mes_ptr = mes_ptr + pos.size()*sizeof(double); 
+
+  final_address = (long unsigned int)&(*mes_ptr);
   
   DEBUGCOMM("Composed MSG of size %d\n", final_address-initial_address);
   mes_size = (final_address-initial_address);
+  
   return (size_t)mes_size;
 }
 
@@ -171,12 +187,15 @@ FootbotMissionAgents::getNumberOfNeighbors()
   return 0;
 }
 
+
+
+
 CVector3
 FootbotMissionAgents::randomWaypoint()
 {
-  /// generate point in the square (1,5) x (1,5)
-  Real x = m_randomGen->Uniform(CRange<Real>(-12,12));
-  Real y = m_randomGen->Uniform(CRange<Real>(-12,12));
+  /// generate point in the square (1,10) x (1,10)
+  Real x = m_randomGen->Uniform(CRange<Real>(-10,10));
+  Real y = m_randomGen->Uniform(CRange<Real>(-10,10));
   CVector3 random_point(x,y,0);
   return random_point;
 }
@@ -220,19 +239,34 @@ DEBUGCOMM("relay message type %c \n",char(sender_identifier));
 
 if(sender_identifier == 'c')
 { 
-
+  bool send = false;
   uint8_t relay_id = cntptr[0];
+  
+  if(relays_met.count(relay_id) != 0)
+    {
+      uint32_t time_last_met = relays_met[relay_id];
+      if((m_Steps-time_last_met) >= 400){ // 20 seconds = 20*20 timesteps
+         send = true;}
+    }
+  else
+    {
+      send = true;
+      relays_met.insert(pair<uint8_t, uint32_t>(relay_id,m_Steps));
+    }
+
   cntptr += sizeof(relay_id); 
   DEBUGCOMM("Received message from relay %d \n",relay_id); 
-
-  // response to relay
-  size_t mes_size = create_message_torelay(m_socketMsg);
-  DEBUGCOMM("sending %d bytes to relay %d in range\n", mes_size, relay_id);
-  std::ostringstream str_tmp(ostringstream::out);
-  str_tmp << "fb_" << relay_id;
-  string str_Dest = str_tmp.str();
   
-  m_pcWifiActuator->SendBinaryMessageTo(str_Dest.c_str(),m_socketMsg,mes_size);
+  if(send)
+    {
+        // response to relay
+        size_t mes_size = create_message_torelay(m_socketMsg);
+        DEBUGCOMM("sending %d bytes to relay %d in range\n", mes_size, relay_id);
+        std::ostringstream str_tmp(ostringstream::out);
+        str_tmp << "fb_" << relay_id;
+        string str_Dest = str_tmp.str();
+        m_pcWifiActuator->SendBinaryMessageTo(str_Dest.c_str(),m_socketMsg,mes_size);
+    }
 }
 else if(sender_identifier == 'd')
 { 
@@ -268,7 +302,9 @@ else if(sender_identifier == 'm')
 }
 
 
-  void 
+
+
+void 
 FootbotMissionAgents::ControlStep() 
 { 
   m_Steps+=1;
@@ -279,26 +315,38 @@ FootbotMissionAgents::ControlStep()
     data_file << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
  
   /*** send message to other agents ***/
-  char hello_message[5];
-  char *hello_msg_ptr = hello_message;
-  uint8_t mes_type_id = 'm';
-  memcpy(hello_msg_ptr,&mes_type_id,sizeof(mes_type_id));
-  hello_msg_ptr += sizeof(mes_type_id);
-  m_pcWifiActuator->SendBinaryMessageTo("-1",hello_message,1);
+  if(m_Steps%10 == 0)
+  {
+      char hello_message[5];
+      char *hello_msg_ptr = hello_message;
+      uint8_t mes_type_id = 'm';
+      memcpy(hello_msg_ptr,&mes_type_id,sizeof(mes_type_id));
+      hello_msg_ptr += sizeof(mes_type_id);
+      m_pcWifiActuator->SendBinaryMessageTo("-1",hello_message,1);
+  }
 
-  if(!reachedTarget)
+  if(reachedTarget)
     {
-      CVector3 randomPoint = randomWaypoint();
+      CVector3 randomPoint(target_positions[0],target_positions[1],0);
+      
+
       m_navClient->setTargetPosition( randomPoint );
       printf("Robot [%d] selected random point %.2f %.2f\n",
        m_myID,randomPoint.GetX(),randomPoint.GetY());
-      reachedTarget = true;
+      reachedTarget = false;
     }
   else if(m_navClient->state() == target_state)
     { 
-      //if(time_counter == 20)
-      reachedTarget = false;
-      //time_counter = 0;
+      CVector3 temp = randomWaypoint();
+
+      // removing the target which is already reached
+      target_positions.erase(target_positions.begin(),target_positions.begin()+1);
+      target_positions.erase(target_positions.begin(),target_positions.begin()+1);
+      
+      target_positions.push_back(temp[0]);
+      target_positions.push_back(temp[1]);
+      
+      reachedTarget = true;
     }
 
  //searching for the received msgs
