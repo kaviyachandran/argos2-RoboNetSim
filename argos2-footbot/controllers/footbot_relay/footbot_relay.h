@@ -120,12 +120,24 @@ class FootbotRelay: public CCI_Controller
         // Neighbors are mission agents
         uint8_t number_neighbors;
         uint64_t time_last_data_transmitted;
+        uint64_t timestep;
+        vector <double> target_positions;
     };  
-
+    
     struct Agent_profile_message agent_message;
+   
+    
+    vector<uint8_t> target_odd;
+    vector<uint8_t> target_even;
+    uint8_t number_of_targets;
+    
 
     map<uint8_t,vector<double> > baseStationPosition;
     vector<double> getBaseStationPositions(TConfigurationNode node);
+    
+    // vector to store the agents met during each run and collected real data
+    vector<uint8_t> visited_agents;
+
 
     ofstream data_file;
     string filename;
@@ -136,8 +148,8 @@ class FootbotRelay: public CCI_Controller
     ofstream meeting_data_file;
     string meeting_file;
 
-    vector<uint8_t> agents;
-    vector<uint8_t> data_exchange_agents;
+    //vector<uint8_t> agents;
+    //vector<uint8_t> data_exchange_agents;
     
   public:
 
