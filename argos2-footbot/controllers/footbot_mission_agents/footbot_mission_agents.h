@@ -122,7 +122,6 @@ class FootbotMissionAgents: public CCI_Controller
     vector<double>  calculated_positions(uint16_t timesteps_number,uint8_t interval);
     vector<double> approximate_pos(vector<double> curr_pos,std::vector<uint16_t> &t, uint16_t number_timesteps, double optimal_speed, vector<double> &target_positions, uint8_t interval);
     
-    void Testing();
 };
 
 #endif

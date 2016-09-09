@@ -675,4 +675,3 @@ FootbotRelay::getTime()
 
 	
 REGISTER_CONTROLLER(FootbotRelay, "footbot_relay_controller")
-

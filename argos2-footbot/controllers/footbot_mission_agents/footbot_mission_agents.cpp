@@ -13,8 +13,8 @@
 #define DEBUGCOMM(m, ...) \
 {\
   fprintf(stderr, "%.2f DEBUGCOMM[%d]: " m,\
-	  (float) m_Steps,\
-	  (int) m_myID, \
+    (float) m_Steps,\
+    (int) m_myID, \
           ## __VA_ARGS__);\
   fflush(stderr);\
 }
@@ -430,4 +430,3 @@ FootbotMissionAgents::getTime()
 
   
 REGISTER_CONTROLLER(FootbotMissionAgents, "footbot_mission_agent_controller")
-
