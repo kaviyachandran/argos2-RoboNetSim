@@ -13,8 +13,8 @@
 #define DEBUGCOMM(m, ...) \
 {\
   fprintf(stderr, "%.2f DEBUGCOMM[%d]: " m,\
-    (float) m_Steps,\
-    (int) m_myID, \
+	  (float) m_Steps,\
+	  (int) m_myID, \
           ## __VA_ARGS__);\
   fflush(stderr);\
 }
@@ -33,7 +33,8 @@ FootbotMissionAgents::FootbotMissionAgents() :
   neighbour_agents_number(0),
   interval(10),
   optimal_speed(0.05),
-  min_distance_to_target(0.2)
+  min_distance_to_target(0.2),
+  time_one_run(2540)
 {
 }
 
@@ -212,13 +213,8 @@ FootbotMissionAgents::getData(char* data_ptr)
     memcpy(data_ptr,&generated_data_size,sizeof(generated_data_size));
     data_ptr = data_ptr + sizeof(generated_data_size);
     
-    for(int i =0 ;i < 1000; i++)
-      {
-    
-        uint8_t a = 99;
-        memcpy(data_ptr,&a,sizeof(a));
-        data_ptr = data_ptr + sizeof(a);
-      }
+    memcpy(data_ptr, fake_data.data(), fake_data.size()*sizeof(double));
+    data_ptr = data_ptr + fake_data.size()*sizeof(double); 
     
     long unsigned int final_address =  (long unsigned int)&(*data_ptr);
     
@@ -289,7 +285,7 @@ else if(sender_identifier == 'd')
   DEBUGCOMM("sending %d bytes to relay %s in range\n", data_size,str_Dest.c_str());
 
   m_pcWifiActuator->SendBinaryMessageTo(str_Dest.c_str(),agent_data,data_size);
-
+  fake_data.clear();
 }
 
 else if(sender_identifier == 'm')
@@ -309,7 +305,12 @@ FootbotMissionAgents::ControlStep()
 { 
   m_Steps+=1;
   neighbour_agents_number = 0;
+  fake_data.push_back(33.33);
   
+  if(m_Steps % time_one_run == 0)
+  {
+    fake_data.clear();
+  }
   /*** Saving the waypoints ***/
   if(m_Steps % 5 == 0 && m_Steps > 2)
     data_file << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
@@ -430,3 +431,4 @@ FootbotMissionAgents::getTime()
 
   
 REGISTER_CONTROLLER(FootbotMissionAgents, "footbot_mission_agent_controller")
+

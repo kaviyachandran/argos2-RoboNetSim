@@ -92,11 +92,12 @@ class FootbotMissionAgents: public CCI_Controller
     struct Agent_profile_message profile_message;
     uint64_t generated_data_size;
     size_t getData(char* ptr);
+    uint16_t time_one_run; /// time taken for one single run for a relay
 
     // Map to store the id of relay and at what time step info about agent is sent
     // to make sure info is only sent every 20 seconds though they are in contact
     map<uint8_t, uint32_t> relays_met;
-
+    vector<double> fake_data;
 
   public:
 
@@ -122,6 +123,7 @@ class FootbotMissionAgents: public CCI_Controller
     vector<double>  calculated_positions(uint16_t timesteps_number,uint8_t interval);
     vector<double> approximate_pos(vector<double> curr_pos,std::vector<uint16_t> &t, uint16_t number_timesteps, double optimal_speed, vector<double> &target_positions, uint8_t interval);
     
+    void Testing();
 };
 
 #endif

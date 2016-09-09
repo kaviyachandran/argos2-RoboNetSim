@@ -26,7 +26,7 @@ for(int i = 0 ; i < t.size(); i++)
     }
     else
     {
-      t2 = (number_timesteps-t[i-1]);
+      t2 = (number_timesteps-t[i-1])+1;
     }
     
     cout << "time step *************" << t2 << endl;

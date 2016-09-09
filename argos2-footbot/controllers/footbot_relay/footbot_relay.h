@@ -121,17 +121,15 @@ class FootbotRelay: public CCI_Controller
         uint8_t number_neighbors;
         uint64_t time_last_data_transmitted;
         uint64_t timestep;
-        vector <double> target_positions;
+        vector <double> predicted_positions;
     };  
     
     struct Agent_profile_message agent_message;
-   
+    uint8_t number_of_positions;
     
     vector<uint8_t> target_odd;
     vector<uint8_t> target_even;
-    uint8_t number_of_targets;
     
-
     map<uint8_t,vector<double> > baseStationPosition;
     vector<double> getBaseStationPositions(TConfigurationNode node);
     

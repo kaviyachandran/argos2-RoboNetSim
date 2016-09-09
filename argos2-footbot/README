@@ -33,6 +33,10 @@ How does relay prioritize among agents?
 
 Say for example Relay meets agent at t=0 so again even if they are in contact relay should try to get the information again only at t=20. Believing that there is a new info after 20 timesteps.
 
+For agent messages in relays:
+Relays can have a map <id, struct> ----> id as key and the structure object with all values as value.
+
+
 *** COMPILATION ***
 
 

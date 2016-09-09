@@ -36,9 +36,10 @@ FootbotRelay::FootbotRelay() :
 	target_state(STATE_ARRIVED_AT_TARGET),
 	min(1),
 	neighbour_count(0),
-	number_of_targets(20)
-{
-}
+	number_of_positions((3*60*20)/10)   //// Positions for 3 minutes -> 3*60*20 but positions 
+	{                                    //// are calculated only every 10 timestep
+
+	}
 
 
 
@@ -296,13 +297,13 @@ FootbotRelay::parse_agent_message(vector<char> &incoming_agent_message)
     agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.timestep);
     DEBUGCOMM("timestep %d\n", agent_message.timestep);
 
-    // future target positions
-    for(int i = 0; i < 2*number_of_targets ; i++)
+    // future positions
+    for(int i = 0; i < 2*number_of_positions ; i++)
     {   
     	double temp;
     	memcpy(&temp, agent_mes_ptr, sizeof(temp));
     	agent_mes_ptr = agent_mes_ptr + sizeof(temp);
-    	agent_message.target_positions.push_back(temp);
+    	agent_message.predicted_positions.push_back(temp);
     	//cout << "Received "<< temp << endl;
     } 
 
@@ -675,3 +676,4 @@ FootbotRelay::getTime()
 
 	
 REGISTER_CONTROLLER(FootbotRelay, "footbot_relay_controller")
+
