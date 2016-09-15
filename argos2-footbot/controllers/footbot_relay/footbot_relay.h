@@ -121,7 +121,9 @@ class FootbotRelay: public CCI_Controller
         uint8_t number_neighbors;
         uint64_t time_last_data_transmitted;
         uint64_t timestep;
-        vector <double> predicted_positions;
+        double target_pos_x;
+        double target_pos_y;
+        uint64_t data_available;
     };  
     
     struct Agent_profile_message agent_message;

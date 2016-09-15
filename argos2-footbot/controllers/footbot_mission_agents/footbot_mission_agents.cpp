@@ -28,13 +28,14 @@ FootbotMissionAgents::FootbotMissionAgents() :
   m_Steps(0),
   m_randomGen(0),
   reachedTarget(true),
-  predicted_timesteps(3600),
+  predicted_timesteps(360),
   target_state(STATE_ARRIVED_AT_TARGET),
   neighbour_agents_number(0),
   interval(10),
   optimal_speed(0.05),
   min_distance_to_target(0.2),
-  time_one_run(2540)
+  time_one_run(2540),
+  wait_time(0)
 {
 }
 
@@ -89,7 +90,7 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
   m_socketMsg = new char[MAX_UDP_SOCKET_BUFFER_SIZE];
 
   //initialise target position list with few(10) random positions
-  for(int i =0; i<20; i++)
+  for(int i =0; i<5; i++)
   {
     CVector3 temp = randomWaypoint();
     target_positions.push_back(temp[0]);
@@ -164,15 +165,23 @@ FootbotMissionAgents::create_message_torelay(char* mes_ptr)
   memcpy(mes_ptr, &m_myID, sizeof(m_Steps));
   mes_ptr += sizeof(m_Steps);
   
-  vector<double> pos = calculated_positions(predicted_timesteps,interval); 
-  profile_message.positions_predicted = pos;
-    
+ 
   long unsigned int final_address = (long unsigned int)&(*mes_ptr);
-  DEBUGCOMM("before vecctor %d\n", final_address-initial_address); 
+  DEBUGCOMM("before vector %d\n", final_address-initial_address); 
 
-  /// #6: 20 future target positions 
-  memcpy(mes_ptr, pos.data(), pos.size()*sizeof(double));
-  mes_ptr = mes_ptr + pos.size()*sizeof(double); 
+  /// #6: 20 future target position 
+  profile_message.target_pos_x = target_positions[0];
+  profile_message.target_pos_y = target_positions[1];
+  
+  memcpy(mes_ptr, &profile_message.target_pos_x, sizeof(profile_message.target_pos_x));
+  mes_ptr = mes_ptr + sizeof(profile_message.target_pos_x); 
+  
+  memcpy(mes_ptr, &profile_message.target_pos_y, sizeof(profile_message.target_pos_y));
+  mes_ptr = mes_ptr + sizeof(profile_message.target_pos_y); 
+  
+  profile_message.data_available = sizeof(double)*fake_data.size();
+  memcpy(mes_ptr, &profile_message.data_available, sizeof(profile_message.data_available));
+  mes_ptr = mes_ptr + sizeof(profile_message.data_available);
 
   final_address = (long unsigned int)&(*mes_ptr);
   
@@ -195,8 +204,8 @@ CVector3
 FootbotMissionAgents::randomWaypoint()
 {
   /// generate point in the square (1,10) x (1,10)
-  Real x = m_randomGen->Uniform(CRange<Real>(-10,10));
-  Real y = m_randomGen->Uniform(CRange<Real>(-10,10));
+  Real x = m_randomGen->Uniform(CRange<Real>(-9,9));
+  Real y = m_randomGen->Uniform(CRange<Real>(-9,9));
   CVector3 random_point(x,y,0);
   return random_point;
 }
@@ -213,8 +222,9 @@ FootbotMissionAgents::getData(char* data_ptr)
     memcpy(data_ptr,&generated_data_size,sizeof(generated_data_size));
     data_ptr = data_ptr + sizeof(generated_data_size);
     
-    memcpy(data_ptr, fake_data.data(), fake_data.size()*sizeof(double));
-    data_ptr = data_ptr + fake_data.size()*sizeof(double); 
+    DEBUGCOMM("Size of data sent %d\n",fake_data.size()*sizeof(uint8_t));
+    memcpy(data_ptr, fake_data.data(), fake_data.size()*sizeof(uint8_t));
+    data_ptr = data_ptr + fake_data.size()*sizeof(uint8_t); 
     
     long unsigned int final_address =  (long unsigned int)&(*data_ptr);
     
@@ -237,21 +247,27 @@ if(sender_identifier == 'c')
 { 
   bool send = false;
   uint8_t relay_id = cntptr[0];
+  cntptr += sizeof(relay_id); 
+  DEBUGCOMM("Received message from relay %d \n",relay_id); 
   
   if(relays_met.count(relay_id) != 0)
     {
       uint32_t time_last_met = relays_met[relay_id];
-      if((m_Steps-time_last_met) >= 400){ // 20 seconds = 20*20 timesteps
-         send = true;}
+      if((m_Steps-time_last_met) >= 200)
+       { // 10 seconds = 20*10 timesteps
+         relays_met[relay_id] = m_Steps;
+         send = true;
+       }
+       cout << "time last met " << time_last_met << " Should the agent send message " << send << endl;
     }
   else
     {
       send = true;
       relays_met.insert(pair<uint8_t, uint32_t>(relay_id,m_Steps));
+      cout << "agent met a relay first time " << endl;
     }
 
-  cntptr += sizeof(relay_id); 
-  DEBUGCOMM("Received message from relay %d \n",relay_id); 
+  
   
   if(send)
     {
@@ -262,6 +278,7 @@ if(sender_identifier == 'c')
         str_tmp << "fb_" << relay_id;
         string str_Dest = str_tmp.str();
         m_pcWifiActuator->SendBinaryMessageTo(str_Dest.c_str(),m_socketMsg,mes_size);
+        
     }
 }
 else if(sender_identifier == 'd')
@@ -282,10 +299,13 @@ else if(sender_identifier == 'd')
   str_tmp << "fb_" << relay_id;
   string str_Dest = str_tmp.str();
   
-  DEBUGCOMM("sending %d bytes to relay %s in range\n", data_size,str_Dest.c_str());
-
+  //DEBUGCOMM("sending %d bytes to relay %s in range\n", data_size,str_Dest.c_str());
+  cout << "Size of data to be sent "<< sizeof(double)*fake_data.size() << endl;
   m_pcWifiActuator->SendBinaryMessageTo(str_Dest.c_str(),agent_data,data_size);
+  printf("message sent\n");
   fake_data.clear();
+  cout << "After sending "<< sizeof(double)*fake_data.size() << endl;
+  //DEBUGCOMM("Size of data after clearing %d\n",fake_data.size()*sizeof(double));
 }
 
 else if(sender_identifier == 'm')
@@ -305,7 +325,7 @@ FootbotMissionAgents::ControlStep()
 { 
   m_Steps+=1;
   neighbour_agents_number = 0;
-  fake_data.push_back(33.33);
+  
   
   if(m_Steps % time_one_run == 0)
   {
@@ -313,28 +333,27 @@ FootbotMissionAgents::ControlStep()
   }
   /*** Saving the waypoints ***/
   if(m_Steps % 5 == 0 && m_Steps > 2)
-    data_file << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
- 
-  /*** send message to other agents ***/
-  if(m_Steps%10 == 0)
   {
-      char hello_message[5];
-      char *hello_msg_ptr = hello_message;
-      uint8_t mes_type_id = 'm';
-      memcpy(hello_msg_ptr,&mes_type_id,sizeof(mes_type_id));
-      hello_msg_ptr += sizeof(mes_type_id);
-      m_pcWifiActuator->SendBinaryMessageTo("-1",hello_message,1);
+    data_file << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
+    uint8_t temp = 1;
+    fake_data.push_back(temp);
   }
+ 
 
   if(reachedTarget)
     {
-      CVector3 randomPoint(target_positions[0],target_positions[1],0);
-      
-
-      m_navClient->setTargetPosition( randomPoint );
-      printf("Robot [%d] selected random point %.2f %.2f\n",
-       m_myID,randomPoint.GetX(),randomPoint.GetY());
-      reachedTarget = false;
+      if(wait_time > 0)
+      { 
+        wait_time = wait_time-1;
+      }
+      else
+      {
+        CVector3 randomPoint(target_positions[0],target_positions[1],0);
+        m_navClient->setTargetPosition( randomPoint );
+        printf("Robot [%d] selected random point %.2f %.2f\n",
+         m_myID,randomPoint.GetX(),randomPoint.GetY());
+        reachedTarget = false;
+      }
     }
   else if(m_navClient->state() == target_state)
     { 
@@ -347,8 +366,22 @@ FootbotMissionAgents::ControlStep()
       target_positions.push_back(temp[0]);
       target_positions.push_back(temp[1]);
       
+      // Once the agent reaches target it has to wait there for few seconds (collecting data)
       reachedTarget = true;
+      wait_time = m_randomGen->Uniform(CRange<Real>(4,10))*20;
     }
+
+
+   /*** send message to other agents ***/
+  if(m_Steps%10 == 0)
+  {
+      char hello_message[5];
+      char *hello_msg_ptr = hello_message;
+      uint8_t mes_type_id = 'm';
+      memcpy(hello_msg_ptr,&mes_type_id,sizeof(mes_type_id));
+      hello_msg_ptr += sizeof(mes_type_id);
+      m_pcWifiActuator->SendBinaryMessageTo("-1",hello_message,1);
+  }
 
  //searching for the received msgs
   TMessageList t_incomingMsgs;
@@ -356,7 +389,7 @@ FootbotMissionAgents::ControlStep()
   for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
     {
       /// parse msg
-      DEBUGCOMM("Received %lu bytes to incoming buffer \n", it->Payload.size());
+    DEBUGCOMM("Received %lu bytes to incoming buffer \n", it->Payload.size());
       
     vector<char> check_message = it->Payload;
     DEBUGCOMM("Identifier of received message [extern] %c\n",char(check_message[0]));
@@ -365,7 +398,7 @@ FootbotMissionAgents::ControlStep()
       parse_message(it->Payload);
     }
 
-  
+ 
   ///  must call this two methods from navClient in order to
   ///  update the navigation controller
   m_navClient->setTime(getTime());

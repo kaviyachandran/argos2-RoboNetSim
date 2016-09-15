@@ -247,7 +247,7 @@ FootbotRelay::parse_agent_message(vector<char> &incoming_agent_message)
     neighbour_count = neighbour_count + 1;
     
 
-  	DEBUGCOMM("profile message from agent\n");
+  	//DEBUGCOMM("profile message from agent\n");
 
   	memcpy(&agent_message.message_size, agent_mes_ptr, sizeof(agent_message.message_size));
     agent_mes_ptr = agent_mes_ptr+sizeof(agent_message.message_size);
@@ -256,7 +256,7 @@ FootbotRelay::parse_agent_message(vector<char> &incoming_agent_message)
   	agent_message.agent_id = agent_mes_ptr[0];
   	agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.agent_id);
   	
-  	DEBUGCOMM("agent id %d\n",agent_message.agent_id);
+  	//DEBUGCOMM("agent id %d\n",agent_message.agent_id);
 
   	if(check_set.find(agent_message.agent_id) == check_set.end())
   	{
@@ -268,7 +268,7 @@ FootbotRelay::parse_agent_message(vector<char> &incoming_agent_message)
     // Time when message is sent
    
     memcpy(&agent_message.time_message_sent, agent_mes_ptr, sizeof(agent_message.time_message_sent));
-    DEBUGCOMM("time sent %u\n",agent_message.time_message_sent);
+    //DEBUGCOMM("time sent %u\n",agent_message.time_message_sent);
     agent_mes_ptr+=sizeof(agent_message.time_message_sent);
 
     // Agent pos
@@ -285,28 +285,31 @@ FootbotRelay::parse_agent_message(vector<char> &incoming_agent_message)
     // last time when hte data is transmitted
     memcpy(&agent_message.time_last_data_transmitted,agent_mes_ptr,sizeof(agent_message.time_last_data_transmitted));
     agent_mes_ptr+= sizeof(agent_message.time_last_data_transmitted);
-    DEBUGCOMM("LAST DATA transmitted %u\n",agent_message.time_last_data_transmitted);
+    //DEBUGCOMM("LAST DATA transmitted %u\n",agent_message.time_last_data_transmitted);
 
     // number of neighbours
     agent_message.number_neighbors = (uint8_t)agent_mes_ptr[0];
     agent_mes_ptr = agent_mes_ptr+ sizeof(agent_message.number_neighbors);
-    DEBUGCOMM("number of neighbours for agent %d\n",agent_message.number_neighbors);
+    //DEBUGCOMM("number of neighbours for agent %d\n",agent_message.number_neighbors);
 
     //timestep
     memcpy(&agent_message.timestep, agent_mes_ptr, sizeof(agent_message.timestep));
     agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.timestep);
-    DEBUGCOMM("timestep %d\n", agent_message.timestep);
+    //DEBUGCOMM("timestep %d\n", agent_message.timestep);
 
-    // future positions
-    for(int i = 0; i < 2*number_of_positions ; i++)
-    {   
-    	double temp;
-    	memcpy(&temp, agent_mes_ptr, sizeof(temp));
-    	agent_mes_ptr = agent_mes_ptr + sizeof(temp);
-    	agent_message.predicted_positions.push_back(temp);
-    	//cout << "Received "<< temp << endl;
-    } 
+    // future position
+    memcpy(&agent_message.target_pos_x, agent_mes_ptr, sizeof(agent_message.target_pos_x));
+    agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.target_pos_x);
+    //DEBUGCOMM("target X %d\n", agent_message.target_pos_x);
 
+    memcpy(&agent_message.target_pos_y, agent_mes_ptr, sizeof(agent_message.target_pos_y));
+    agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.target_pos_y);
+    //DEBUGCOMM("target Y %d\n", agent_message.target_pos_y);
+    
+    // amount of data available from the agent
+    memcpy(&agent_message.data_available, agent_mes_ptr, sizeof(agent_message.data_available));
+    agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.data_available);
+    DEBUGCOMM("Amount of data available %lu\n", agent_message.data_available);
     
     DEBUGCOMM("done parsing agent message\n");
 	

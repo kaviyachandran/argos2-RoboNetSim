@@ -4,7 +4,6 @@ set(footbot_mission_agents_HEADERS
 
 set(footbot_mission_agents_IMPLEMENTATIONS
   footbot_mission_agents.cpp
-  position_calculator.cc
   )
 
 add_definitions(-std=c++11)

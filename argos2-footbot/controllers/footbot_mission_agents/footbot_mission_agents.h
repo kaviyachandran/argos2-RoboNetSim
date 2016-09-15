@@ -31,6 +31,8 @@ using namespace std;
 
 #define MAX_UDP_SOCKET_BUFFER_SIZE 1500
 
+
+
 class FootbotMissionAgents: public CCI_Controller
 {
   private:
@@ -86,7 +88,9 @@ class FootbotMissionAgents: public CCI_Controller
         // Neighbors are mission agents
         uint8_t number_neighbors;
         uint64_t time_last_data_transmitted;
-        vector<double> positions_predicted;
+        double target_pos_x;
+        double target_pos_y;
+        uint64_t data_available;
     };  
 
     struct Agent_profile_message profile_message;
@@ -98,6 +102,9 @@ class FootbotMissionAgents: public CCI_Controller
     // to make sure info is only sent every 20 seconds though they are in contact
     map<uint8_t, uint32_t> relays_met;
     vector<double> fake_data;
+
+    //time agent waits at target position collecting data
+    uint8_t wait_time;
 
   public:
 
@@ -116,12 +123,12 @@ class FootbotMissionAgents: public CCI_Controller
 
     static std::string getTimeStr();
     UInt64 getTime();
-    double distance(double a, double b,  double c, double d);
+    
    // void sendStringPacketTo(int dest, const string msg);
     CVector3 randomWaypoint();
 
-    vector<double>  calculated_positions(uint16_t timesteps_number,uint8_t interval);
-    vector<double> approximate_pos(vector<double> curr_pos,std::vector<uint16_t> &t, uint16_t number_timesteps, double optimal_speed, vector<double> &target_positions, uint8_t interval);
+    //vector<double>  calculated_positions(uint16_t timesteps_number,uint8_t interval);
+    
     
     void Testing();
 };
