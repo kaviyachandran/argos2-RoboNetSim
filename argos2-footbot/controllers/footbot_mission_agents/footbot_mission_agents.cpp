@@ -32,8 +32,6 @@ FootbotMissionAgents::FootbotMissionAgents() :
   target_state(STATE_ARRIVED_AT_TARGET),
   neighbour_agents_number(0),
   interval(10),
-  optimal_speed(0.05),
-  min_distance_to_target(0.2),
   time_one_run(2540),
   wait_time(0)
 {
@@ -55,11 +53,9 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
  
   /// Random
   GetNodeAttributeOrDefault(t_node, "RandomSeed", RandomSeed, RandomSeed);
-  GetNodeAttributeOrDefault(t_node, "optimalSpeed", optimal_speed, optimal_speed);
-  GetNodeAttributeOrDefault(t_node, "targetMinPointDistance", min_distance_to_target, min_distance_to_target);
+  //GetNodeAttributeOrDefault(t_node, "optimalSpeed", optimal_speed, optimal_speed);
+  //GetNodeAttributeOrDefault(t_node, "targetMinPointDistance", min_distance_to_target, min_distance_to_target);
   
-
-  cout << "speed " << optimal_speed << endl; 
 
   if( m_randomGen == NULL )
     {
@@ -101,7 +97,12 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
 
    // file to save the data
   filename = "data_"+ to_string(m_myID)+".csv";
-  data_file.open(filename);
+  data_file.open(filename,ios::out | ios::ate | ios::app);
+  
+  //file to save info related to generated data
+  generated_data_file = "generated_data" + to_string(m_myID)+".csv";
+  generated_data_info.open(generated_data_file,ios::out | ios::ate | ios::app);
+  generated_data_info << "Time Step " << "Data Size " << "Relay Id " << "\n";
 
   //sent_file = "sent_data.csv";
   //sent_message_file.open(sent_file);
@@ -153,7 +154,7 @@ FootbotMissionAgents::create_message_torelay(char* mes_ptr)
   memcpy(mes_ptr, &profile_message.time_last_data_transmitted, sizeof(profile_message.time_last_data_transmitted));
   mes_ptr += sizeof(profile_message.time_last_data_transmitted);
   
-  m_lastTxTime = getTime();
+  
 
   /// put numberofneighbors (1)
   /// #5: n_neighbors: uint8_t
@@ -218,13 +219,24 @@ FootbotMissionAgents::getData(char* data_ptr)
     char mes_type_id = 'b';
     memcpy(data_ptr,&mes_type_id,sizeof(mes_type_id));
     data_ptr = data_ptr + sizeof(mes_type_id);
-
-    memcpy(data_ptr,&generated_data_size,sizeof(generated_data_size));
-    data_ptr = data_ptr + sizeof(generated_data_size);
     
+    memcpy(data_ptr,&m_myID,sizeof(m_myID));
+    data_ptr = data_ptr + sizeof(m_myID);
+
+    //uint64_t time_data_sent = getTime();
+    uint64_t time_data_sent = m_Steps;
+    memcpy(data_ptr,&time_data_sent,sizeof(time_data_sent));
+    data_ptr = data_ptr + sizeof(time_data_sent);
+
+    uint32_t d_size = fake_data.size()*sizeof(uint8_t);
+    memcpy(data_ptr,&d_size,sizeof(d_size));
+    data_ptr = data_ptr + sizeof(d_size);
+
+    cout << "Size of data generated and send to relay " << d_size << endl;
+
     DEBUGCOMM("Size of data sent %d\n",fake_data.size()*sizeof(uint8_t));
-    memcpy(data_ptr, fake_data.data(), fake_data.size()*sizeof(uint8_t));
-    data_ptr = data_ptr + fake_data.size()*sizeof(uint8_t); 
+    //memcpy(data_ptr, fake_data.data(), fake_data.size()*sizeof(uint8_t));
+    //data_ptr = data_ptr + fake_data.size()*sizeof(uint8_t); 
     
     long unsigned int final_address =  (long unsigned int)&(*data_ptr);
     
@@ -298,14 +310,17 @@ else if(sender_identifier == 'd')
   std::ostringstream str_tmp(ostringstream::out);
   str_tmp << "fb_" << relay_id;
   string str_Dest = str_tmp.str();
+
+  //uint32_t data_size = sizeof(double)*fake_data.size();
   
   //DEBUGCOMM("sending %d bytes to relay %s in range\n", data_size,str_Dest.c_str());
-  cout << "Size of data to be sent "<< sizeof(double)*fake_data.size() << endl;
+  generated_data_info << m_Steps << "," << sizeof(double)*fake_data.size() << "," << relay_id << "\n";
   m_pcWifiActuator->SendBinaryMessageTo(str_Dest.c_str(),agent_data,data_size);
-  printf("message sent\n");
+  
+  // time last data transmitted
+  m_lastTxTime = getTime();
   fake_data.clear();
-  cout << "After sending "<< sizeof(double)*fake_data.size() << endl;
-  //DEBUGCOMM("Size of data after clearing %d\n",fake_data.size()*sizeof(double));
+
 }
 
 else if(sender_identifier == 'm')
@@ -318,8 +333,6 @@ else if(sender_identifier == 'm')
 }
 
 
-
-
 void 
 FootbotMissionAgents::ControlStep() 
 { 
@@ -328,9 +341,12 @@ FootbotMissionAgents::ControlStep()
   
   
   if(m_Steps % time_one_run == 0)
-  {
+  { 
+    //uint32_t d_size = sizeof(double)*
+    generated_data_info << m_Steps << "," << fake_data.size() << "discared data " << "\n";
     fake_data.clear();
   }
+
   /*** Saving the waypoints ***/
   if(m_Steps % 5 == 0 && m_Steps > 2)
   {

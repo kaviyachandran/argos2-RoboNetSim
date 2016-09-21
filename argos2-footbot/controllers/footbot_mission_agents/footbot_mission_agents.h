@@ -60,8 +60,7 @@ class FootbotMissionAgents: public CCI_Controller
     uint16_t predicted_timesteps;
     uint8_t interval;
     vector<double> target_positions;
-    double optimal_speed;
-    double min_distance_to_target;
+    
 
     size_t create_message_torelay(char* message);
     bool reachedTarget;
@@ -73,10 +72,10 @@ class FootbotMissionAgents: public CCI_Controller
     
     // file to store data
     ofstream data_file;
-    //ofstream sent_message_file;
-
     string filename;
-    //string sent_file;
+    
+    ofstream generated_data_info;
+    string generated_data_file;
     
     struct Agent_profile_message
    {
