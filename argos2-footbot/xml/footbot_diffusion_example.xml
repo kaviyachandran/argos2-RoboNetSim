@@ -128,7 +128,8 @@
     
        <actuators>
        <!--<wifi implementation="default"  range="20" probability="1"/>-->
-        <wifi implementation="dual" range="20" probability="1"/>
+       <!-- range = -1 is to have the range of relays throughout irrespective of the area --> 
+        <wifi implementation="dual" range="-1" probability="1"/>
 	    <!-- <wifiextern implementation="default" />-->
         <footbot_wheels implementation="default" />
         <footbot_leds   implementation="default" />
@@ -312,7 +313,7 @@
     <distribute>
       <position method="uniform" min="-9,-9,0" max="9,9,0" />
       <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
-      <entity quantity="10" max_trials="100" base_num="7" >
+      <entity quantity="4" max_trials="100" base_num="7" >
       <foot-bot id="fb" controller="fnav" />
       </entity>
     </distribute>
@@ -320,7 +321,7 @@
    <!--  
 	this is necessary for robonetsim
     -->
-    <wifi-medium id="wm" number_of_nodes="16"/>
+    <wifi-medium id="wm" number_of_nodes="10"/>
   </arena>
   <media>
     <led id="leds" />
