@@ -20,6 +20,7 @@ b - Agent sending data to relay after receiving acceptance
 
 m - data exchange among agents
 r - data exchange among relays
+x - collected agent data sent from relay to base station
 
 *** choosing Mission Agent to collect data ***
 
@@ -56,6 +57,7 @@ Finally, launch the compilation with the command:
 $ make
 
 If you find no error, you're ready to go to the next phase.
+
 
 
 
