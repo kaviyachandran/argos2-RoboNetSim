@@ -43,7 +43,18 @@ class FootbotBaseStation: public CCI_Controller
     
     CCI_FootBotLedsActuator* m_pcLEDs;
 
-  
+    struct Agent_message_data
+    {
+        uint8_t id;
+        uint32_t data_size;
+        uint64_t time_data_sent;
+    };
+    uint32_t test_data_size;
+    struct Agent_message_data agent_data;
+
+    ofstream agent_data_file;
+    string filename;
+    void parse_relay_message(std::vector<char> &v);
     
   public:
 
@@ -61,7 +72,8 @@ class FootbotBaseStation: public CCI_Controller
     virtual bool IsControllerFinished() const;
 
     UInt64 getTime();
-    void broadcastStringPacket(const CVector3& position);
+    //void broadcastStringPacket(const CVector3& position);
+    
     
 };
 

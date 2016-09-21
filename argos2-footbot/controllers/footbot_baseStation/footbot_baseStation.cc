@@ -8,6 +8,21 @@
 #endif
 
 
+#define __USE_DEBUG_COMM 1
+#if __USE_DEBUG_COMM
+#define DEBUGCOMM(m, ...) \
+{\
+  fprintf(stderr, "%.2f DEBUGCOMM[%d]: " m,\
+    (float) m_Steps,\
+    (int) m_myID, \
+          ## __VA_ARGS__);\
+  fflush(stderr);\
+}
+#else
+#define DEBUGCOMM(m, ...)
+#endif
+
+
 FootbotBaseStation::FootbotBaseStation() :
   RandomSeed(12345),
   m_Steps(0),
@@ -59,10 +74,14 @@ FootbotBaseStation::Init(TConfigurationNode& t_node)
   /// Sets color to all leds
   m_pcLEDs->SetAllColors(CColor::RED);
 
+  filename = "data_"+ to_string(m_myID)+".csv";
+  agent_data_file.open(filename, ios::out | ios::ate | ios::app);
+  agent_data_file << "Id: " << "," << "Number Of times: "<<","<< "Time: " <<","<< "Size: " << "\n"; 
+
 }
 
 
-void
+/*void
 FootbotBaseStation::broadcastStringPacket(const CVector3& baseposition)
 {
   std::ostringstream stringMessage(ostringstream::out);
@@ -74,22 +93,91 @@ FootbotBaseStation::broadcastStringPacket(const CVector3& baseposition)
   stringMessage << "BaseStation : " << int(m_myID) << " Position : " << (Real)baseposition.GetX() << ","<<(Real)baseposition.GetY();
   std::cout << stringMessage.str() << std::endl;
  
+}*/
+
+
+void
+FootbotBaseStation::parse_relay_message(vector<char>& relay_data_message)
+{
+      char *p = (char*)&relay_data_message[0];
+      for(int i=0;i < test_data_size; i++)
+      {
+        printf("message from relay %x\n",*p++);
+      }
+
+  char* relay_message_ptr = (char*)&relay_data_message[0];
+  //long unsigned int initial_address= (long unsigned int)&(*relay_message_ptr);
+  
+  char identifier = (char)relay_message_ptr[0];
+  relay_message_ptr = relay_message_ptr + sizeof(identifier);
+  DEBUGCOMM("identifier %d \n",identifier);
+  
+  uint32_t total_message_size;
+  memcpy(&total_message_size, relay_message_ptr, sizeof(total_message_size));
+  relay_message_ptr = relay_message_ptr + sizeof(total_message_size);
+  DEBUGCOMM("size of total message size: %d \n", total_message_size);
+  
+  //long unsigned int current_address= (long unsigned int)&(*relay_message_ptr);
+ 
+
+  uint8_t relay_id = (uint8_t)relay_message_ptr[0];
+  relay_message_ptr = relay_message_ptr + sizeof(relay_id);
+  DEBUGCOMM("Relay Id %d \n",relay_id);
+  
+  uint8_t map_size = (uint8_t)relay_message_ptr[0];
+  relay_message_ptr = relay_message_ptr + sizeof(map_size);
+  DEBUGCOMM("Number of agent %d \n",map_size);
+ 
+  uint8_t number_of_agents = 0;
+
+  while(number_of_agents < map_size)
+  {
+    // agent id
+    agent_data.id = (uint8_t)relay_message_ptr[0];
+    relay_message_ptr = relay_message_ptr + sizeof(agent_data.id);
+    DEBUGCOMM("Relay Id: %d \n", agent_data.id);
+
+    // number of data transactions with the same relay
+    uint8_t data_exchange_number = (uint8_t)relay_message_ptr[0];
+    relay_message_ptr = relay_message_ptr + sizeof(data_exchange_number);
+    DEBUGCOMM("number of times from same agent:  %d \n", data_exchange_number);
+
+    for(int i=0 ; i < data_exchange_number; i++)
+    {
+      memcpy(&agent_data.time_data_sent, relay_message_ptr, sizeof(agent_data.time_data_sent));
+      relay_message_ptr = relay_message_ptr + sizeof(agent_data.time_data_sent);
+      DEBUGCOMM("time step %lu \n", agent_data.time_data_sent);
+        
+      memcpy(&agent_data.data_size, relay_message_ptr, sizeof(agent_data.data_size));
+      relay_message_ptr = relay_message_ptr + sizeof(agent_data.data_size);
+      DEBUGCOMM("Data size %lu \n", agent_data.data_size);
+        
+      agent_data_file << agent_data.id << "," << i << ","<< agent_data.time_data_sent << "," << agent_data.data_size << "\n";
+      //relay_message_ptr = relay_message_ptr + agent_data.data_size;
+    }
+      number_of_agents = number_of_agents + 1;
+  }
+  
 }
 
-
-  void 
+void 
 FootbotBaseStation::ControlStep() 
 {
   m_Steps+=1;
 
- 
-  
-   TMessageList t_incomingMsgs;
-   m_pcWifiSensor->GetReceivedMessages_Local(t_incomingMsgs);
-   for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++){
-	   
-	   printf("%d received packet from \n", m_myID); 
+  TMessageList t_incomingMsgs;
+  m_pcWifiSensor->GetReceivedMessages(t_incomingMsgs);
+  for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
+  {   
+    //cout << "**************************" << endl;
+    DEBUGCOMM("Received %lu bytes to incoming buffer\n", it->Payload.size());
+	  test_data_size = it->Payload.size();
+    vector<char> check_message = it->Payload;
+    if((char)check_message[0] == 'x')
+    { 
+      parse_relay_message(it->Payload);
     }
+  }
   
   ///  must call this two methods from navClient in order to
   ///  update the navigation controller
