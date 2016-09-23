@@ -36,6 +36,7 @@ FootbotRelay::FootbotRelay() :
 	target_state(STATE_ARRIVED_AT_TARGET),
 	min(1),
 	neighbour_count(0),
+	max_agent_range(1.5),
 	send_message_to_relay(false)   //// Positions for 3 minutes -> 3*60*20 but positions 
 	{                                    //// are calculated only every 10 timestep
 
@@ -62,6 +63,7 @@ FootbotRelay::Init(TConfigurationNode& t_node)
 	/// Random
 	GetNodeAttributeOrDefault(t_node, "RandomSeed", RandomSeed, RandomSeed);
 	GetNodeAttributeOrDefault(t_node, "NumberOfBaseStation", NumberOfBaseStation, NumberOfBaseStation);
+	GetNodeAttributeOrDefault(t_node, "Agentrange", max_agent_range, max_agent_range);
 	
 	/// Stores Base Station positions
 	for (size_t i=1; i <= NumberOfBaseStation ; i++)
@@ -73,7 +75,14 @@ FootbotRelay::Init(TConfigurationNode& t_node)
 		baseStationPosition.insert(pair<uint8_t, vector<double> >(i,basePos));
  		
 	}
-  
+    
+    TConfigurationNode node = GetNode(t_node, "Length");
+    length_size = getValues(node,max_agent_range);
+    node = GetNode(t_node, "Breadth");
+    breadth_size = getValues(node,max_agent_range);
+    
+
+    
 	if( m_randomGen == NULL )
 		{
 			CARGoSRandom::CreateCategory("rwp",
@@ -107,6 +116,8 @@ FootbotRelay::Init(TConfigurationNode& t_node)
 	//m_relaySocketMsg = new char[MAX_UDP_SOCKET_BUFFER_SIZE];
 	max = NumberOfBaseStation;
 	//cout << "number of times q" << number_of_times++ << endl;
+    
+
 	// file to save the data
   	filename = "data_"+ to_string(m_myID)+".csv";
   	data_file.open(filename, ios::out | ios::ate | ios::app);
@@ -138,7 +149,17 @@ FootbotRelay::getBaseStationPositions(TConfigurationNode node)
 	return pos;
 }
 
-
+vector<double> 
+FootbotRelay::getValues(TConfigurationNode node, double agent_range)
+{ 
+	vector<double> size;
+	string temp;
+	GetNodeAttribute(node, "origin", temp);
+	size.push_back(stod(temp)+agent_range);
+	GetNodeAttribute(node, "destination", temp);
+	size.push_back(stod(temp)-agent_range);
+	return size;
+}
 
 uint8_t FootbotRelay::getNeighbourInfo()
 {
@@ -489,6 +510,92 @@ DEBUGCOMM("total message size %d\n", data_to_BS_size);
 return size_t(data_to_BS_size);
 }
 
+deque<double>
+FootbotRelay::calculate_target(vector<double> pos, bool d)
+{   
+	double x = 0.0,y = 0.0;
+    double curr_x = m_navClient->currentPosition().GetX();
+    double curr_y = m_navClient->currentPosition().GetY();
+    deque<double> temp_pos;
+
+    if(curr_y < 0)
+		{
+			y = curr_y + max_agent_range;
+		}
+		else
+		{
+			y = curr_y - max_agent_range;
+		}
+	
+	if(d) // moving in positive direction
+	{   
+		x = curr_x + max_agent_range;
+		temp_pos.push_back(x);
+		temp_pos.push_back(y);
+
+		while(x < length_size[1])
+		{
+			if(y == breadth_size[0])
+ 			{
+  				y = breadth_size[1];
+ 			}
+ 			else 
+ 			{
+    			y = breadth_size[0];
+ 			}
+ 			
+ 			double temp = x + max_agent_range;
+  			if (temp < length_size[1])
+  			{
+    			x = temp;
+  			}
+  			else
+  			{
+    			x = length_size[1];
+  			}
+ 
+  			temp_pos.push_back(x);
+  			temp_pos.push_back(y);
+
+ 		}
+	}
+	else
+	{
+		x = curr_x - max_agent_range;
+		temp_pos.push_back(x);
+		temp_pos.push_back(y);
+
+		while(x > length_size[0])
+		{
+			if(y == breadth_size[0])
+ 			{
+  				y = breadth_size[1];
+ 			}
+ 			else 
+ 			{
+    			y = breadth_size[0];
+ 			}
+ 			
+ 			double temp = x - max_agent_range;
+  			if (temp > length_size[0])
+  			{
+    			x = temp;
+  			}
+  			else
+  			{
+    			x = length_size[0];
+  			}
+
+  			temp_pos.push_back(x);
+  			temp_pos.push_back(y);
+
+ 		}
+	}
+	temp_pos.push_back(pos[0]);
+	temp_pos.push_back(pos[1]);
+	return temp_pos;
+}
+
 void 
 FootbotRelay::ControlStep() 
 {   
@@ -496,14 +603,16 @@ FootbotRelay::ControlStep()
     if(m_Steps % 5 == 0 && m_Steps > 2)
 		/*** Saving the waypoints ***/
 		data_file << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
+    
+    vector<double> tempBasePos;
+    bool pass=true;
+	neighbour_count = 0;
 
 	/***** Assigning target Position  *****/
+   if(relay_target_positions.size()==0)
+   	{ 
 
-	bool pass=true;
-	neighbour_count = 0;
-	if(changePos)
-	{ 
-		while(pass)
+   	while(pass)
 		{   
 		//cout << "position " << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << endl;
 		int min = 0, max = 1;
@@ -516,9 +625,6 @@ FootbotRelay::ControlStep()
 	    	}
 		
 		}
-
-		
-		vector<double> tempBasePos;
 
 		if (m_myID%2 == 0)
 		{
@@ -534,47 +640,68 @@ FootbotRelay::ControlStep()
         	//cout << "target number" << target_odd[counter] << endl;
         	//cout <<"MyId: " << m_myID << "target: " << relay_message.target_basestation << endl;
         }
-		
-		
-		meeting_data_file << m_Steps << "," << m_navClient->currentPosition().GetX() << " " << m_navClient->currentPosition().GetY() << "," << tempBasePos[0] << " "<<tempBasePos[1] << ",";
-		CVector3 targetPos(tempBasePos[0], tempBasePos[1], 0);
-		m_navClient->setTargetPosition(targetPos);
-		
-		changePos = false;
-	}
-
-	else if(m_navClient->state() == target_state)
-	{   
-		send_message_to_relay = true;
-		meeting_data_file <<"," << m_Steps << "\n";
-		//agents.clear();
-		//data_exchange_agents.clear();
-		changePos = true;
-		visited_agents.clear();
-		relay_message.last_served_basestation = uint8_t(counter);
-		relay_message.last_served_time = (uint64_t)getTime();
-        
-        if(data_from_agents.size() > 0)
-        {
-			// sending collected data to Base Station
-			char base_socket_msg[MAX_UDP_SOCKET_BUFFER_SIZE*2];
-			size_t collected_data_size = send_collected_data(base_socket_msg); 
-			
-			std::ostringstream str_tmp(ostringstream::out);
-	  		str_tmp << "fb_" << relay_message.target_basestation;
-	  		string str_Dest = str_tmp.str();
-
-	  		cout << "Base Station Target " << str_Dest << endl;
-			m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),base_socket_msg,collected_data_size);
-			data_from_agents.clear();
-
-			char *p = base_socket_msg;
-			for(int i=0;i < collected_data_size; i++)
+        	if(tempBasePos[0] < 0)
 			{
-				printf("Sending message to Base Station %x\n",*p++);
+				direction = false;
 			}
+			else
+			{
+				direction = true;
+			}
+			relay_target_positions = calculate_target(tempBasePos,direction);
+   	} 
+   
+	else
+	{
+		if(changePos)
+		{   
+			tempBasePos.clear();
+			tempBasePos.push_back(relay_target_positions[0]);
+			relay_target_positions.pop_front();
+			tempBasePos.push_back(relay_target_positions[0]);
+			relay_target_positions.pop_front();
 
+			meeting_data_file << m_Steps << "," << m_navClient->currentPosition().GetX() << " " << m_navClient->currentPosition().GetY() << "," << tempBasePos[0] << " "<<tempBasePos[1] << ",";
+			CVector3 targetPos(tempBasePos[0], tempBasePos[1], 0);
+			m_navClient->setTargetPosition(targetPos);
+			
+			changePos = false;
+	 	}
+ 	
+		else if(m_navClient->state() == target_state)
+		{   
+			send_message_to_relay = true;
+			meeting_data_file <<"," << m_Steps << "\n";
+			//agents.clear();
+			//data_exchange_agents.clear();
+			changePos = true;
+			visited_agents.clear();
+			relay_message.last_served_basestation = uint8_t(counter);
+			relay_message.last_served_time = (uint64_t)getTime();
+	        
+	        if(data_from_agents.size() > 0)
+	        {
+				// sending collected data to Base Station
+				char base_socket_msg[MAX_UDP_SOCKET_BUFFER_SIZE*2];
+				size_t collected_data_size = send_collected_data(base_socket_msg); 
+				
+				std::ostringstream str_tmp(ostringstream::out);
+		  		str_tmp << "fb_" << relay_message.target_basestation;
+		  		string str_Dest = str_tmp.str();
+
+		  		cout << "Base Station Target " << str_Dest << endl;
+				m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),base_socket_msg,collected_data_size);
+				data_from_agents.clear();
+
+				char *p = base_socket_msg;
+				for(int i=0;i < collected_data_size; i++)
+				{
+					printf("Sending message to Base Station %x\n",*p++);
+				}
+
+			}
 		}
+
 	}
 
 	

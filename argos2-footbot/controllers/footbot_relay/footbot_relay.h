@@ -28,6 +28,7 @@
 #include <include/constants.hpp>
 #include <iterator>   
 #include <random>
+#include <deque>
 
 
 using namespace argos;
@@ -127,6 +128,14 @@ class FootbotRelay: public CCI_Controller
         uint64_t data_available;
     };  
     
+    /// calculates target positions for relay depending on the starting position
+   
+    vector<double> breadth_size;
+    vector<double> length_size;
+    double max_agent_range;
+    deque<double> calculate_target(vector<double> final_target,bool d);
+    deque<double> relay_target_positions;
+
     struct Agent_profile_message agent_message;
 
     struct Agent_data_info
@@ -146,7 +155,11 @@ class FootbotRelay: public CCI_Controller
     
     map<uint8_t,vector<double> > baseStationPosition;
     vector<double> getBaseStationPositions(TConfigurationNode node);
+    vector<double> getValues(TConfigurationNode node, double d);
     
+    
+
+    bool direction;
     // vector to store the agents met during each run and collected real data
     vector<uint8_t> visited_agents;
 
