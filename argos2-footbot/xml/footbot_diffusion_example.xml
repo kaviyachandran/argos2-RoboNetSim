@@ -181,6 +181,12 @@
        <BaseStation2 param="position" x= "9.0" y="-9.0"/>
        <BaseStation3 param="position" x= "9.0" y= "9.0"/>
        <BaseStation4 param="position" x="-9.0" y= "9.0"/>
+       
+
+       <Length param="value" origin="-9.0" destination="9.0"/>
+       <Breadth param="value" origin="-9.0" destination="9.0"/>
+       <Agentrange>2.0</Agentrange>
+
     </parameters>
     </footbot_relay_controller>
    
@@ -279,20 +285,13 @@
         wifi_enabled="true"
         controller="fbase" />
  
-    
+     
     <foot-bot id="fb_5"
         position="-7.5,-8.5,0"
         orientation="1,1,0"
         wifi_enabled="true"
         controller="frelay" />
-    
-    <!--
-    <foot-bot id="fb_6"
-        position="-7.5,-8.0,0"
-        orientation="1,1,0"
-        wifi_enabled="true"
-        controller="fnav" />
-    -->
+   
     
     <foot-bot id="fb_6"
         position="7.5,-8.5,0"
@@ -355,7 +354,7 @@
   <!-- * Visualization * -->
   <!-- ****************** -->
   <visualization>
-    <qtopengl_render splash="false">
+    <qtopengl_render splash="true">
 	<!--<camera>
 		<placement idx="0" position="0,0,1" look_at="0,0,0" />
 		<placement idx="1" position="10,0,1" look_at="10,0,0" />
