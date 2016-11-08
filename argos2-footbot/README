@@ -58,6 +58,8 @@ $ make
 
 If you find no error, you're ready to go to the next phase.
 
+To Execute :
 
+Argos- launch_argos -xml/name of xml file
 
-
+ns3 - ./waf - config file

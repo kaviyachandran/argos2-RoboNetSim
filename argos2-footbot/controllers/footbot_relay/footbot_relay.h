@@ -62,7 +62,8 @@ class FootbotRelay: public CCI_Controller
 
     vector<std::string> strVector;
     bool changePos;
-    
+    bool send_message_to_relay;
+    bool calculate_pos;
     
     typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
     boost::char_separator<char> sep;
@@ -79,7 +80,6 @@ class FootbotRelay: public CCI_Controller
     UInt8 getNeighbourInfo();
 
     size_t createProfileMessage(char* msg);
-    bool send_message_to_relay;
     size_t createMessageToMissionAgents(char* m);
     size_t send_collected_data(char *data);
     size_t get_data_from_missionagents(char* data);

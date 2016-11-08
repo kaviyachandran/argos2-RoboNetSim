@@ -98,12 +98,12 @@ FootbotBaseStation::broadcastStringPacket(const CVector3& baseposition)
 
 void
 FootbotBaseStation::parse_relay_message(vector<char>& relay_data_message)
-{
-      char *p = (char*)&relay_data_message[0];
+{  
+      /*char *p = (char*)&relay_data_message[0];
       for(int i=0;i < test_data_size; i++)
       {
         printf("message from relay %x\n",*p++);
-      }
+      }*/
 
   char* relay_message_ptr = (char*)&relay_data_message[0];
   //long unsigned int initial_address= (long unsigned int)&(*relay_message_ptr);
@@ -169,12 +169,11 @@ FootbotBaseStation::ControlStep()
   m_pcWifiSensor->GetReceivedMessages(t_incomingMsgs);
   for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
   {   
-    //cout << "**************************" << endl;
-    DEBUGCOMM("Received %lu bytes to incoming buffer\n", it->Payload.size());
-	  test_data_size = it->Payload.size();
+    test_data_size = it->Payload.size();
     vector<char> check_message = it->Payload;
     if((char)check_message[0] == 'x')
     { 
+      DEBUGCOMM("Received %lu bytes to incoming buffer\n", it->Payload.size());
       parse_relay_message(it->Payload);
     }
   }

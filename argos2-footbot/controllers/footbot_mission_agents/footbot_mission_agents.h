@@ -21,6 +21,8 @@
 #include <argos2/common/control_interface/swarmanoid/footbot/ci_footbot_encoder_sensor.h>
 #include <navigation/client/nav_client.h>
 #include <fstream>
+#include <deque>
+
 
 #define PI 3.14159265
 
@@ -60,7 +62,7 @@ class FootbotMissionAgents: public CCI_Controller
     uint16_t predicted_timesteps;
     uint8_t interval;
     vector<double> target_positions;
-    
+    uint32_t discarded_data_count;
 
     size_t create_message_torelay(char* message);
     bool reachedTarget;
@@ -100,10 +102,10 @@ class FootbotMissionAgents: public CCI_Controller
     // Map to store the id of relay and at what time step info about agent is sent
     // to make sure info is only sent every 20 seconds though they are in contact
     map<uint8_t, uint32_t> relays_met;
-    vector<double> fake_data;
+    deque<double> fake_data;
 
     //time agent waits at target position collecting data
-    uint8_t wait_time;
+    uint32_t wait_time;
 
   public:
 

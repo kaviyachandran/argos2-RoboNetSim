@@ -30,13 +30,14 @@ FootbotRelay::FootbotRelay() :
 	m_Steps(0),
 	m_randomGen(0),
 	sep(" :,"),
-	counter(0),
+	counter(1),
 	NumberOfBaseStation(4),
 	changePos(true),
 	target_state(STATE_ARRIVED_AT_TARGET),
 	min(1),
 	neighbour_count(0),
-	max_agent_range(1.5),
+	max_agent_range(2.0),
+	calculate_pos(true),
 	send_message_to_relay(false)   //// Positions for 3 minutes -> 3*60*20 but positions 
 	{                                    //// are calculated only every 10 timestep
 
@@ -169,7 +170,7 @@ uint8_t FootbotRelay::getNeighbourInfo()
 size_t FootbotRelay::createProfileMessage(char *outptr)
 {   
 	long unsigned int initial_address =  (long unsigned int)&(*outptr);
-  	printf("sending message to relay");
+  	printf("sending message to relay \n");
     //printf("beginning %lu\n", initial_address);
 
     char message_type = 'r';
@@ -397,6 +398,7 @@ FootbotRelay::parse_relay_message(std::vector<char> &incomingMsg)
 		memcpy(&received_relay_message.message_size, cntptr, sizeof(received_relay_message.message_size));
 		cntptr += sizeof(received_relay_message.message_size);
 		printf("Received message size %d\n", received_relay_message.message_size);
+		
 		/// read id (1)
 		/// #1:  id  - uint8_t
 		received_relay_message.relay_id = uint8_t(cntptr[0]);
@@ -516,20 +518,29 @@ FootbotRelay::calculate_target(vector<double> pos, bool d)
 	double x = 0.0,y = 0.0;
     double curr_x = m_navClient->currentPosition().GetX();
     double curr_y = m_navClient->currentPosition().GetY();
+
+
+	cout << "x " << curr_x << endl;
+ 	cout << "y " << curr_y << endl;
+    
     deque<double> temp_pos;
 
     if(curr_y < 0)
 		{
-			y = curr_y + max_agent_range;
+			y = breadth_size[1];
 		}
 		else
 		{
-			y = curr_y - max_agent_range;
+			y = breadth_size[0];
 		}
 	
 	if(d) // moving in positive direction
 	{   
 		x = curr_x + max_agent_range;
+		
+		cout << "x " << x << endl;
+		cout << "y " << y << endl;
+
 		temp_pos.push_back(x);
 		temp_pos.push_back(y);
 
@@ -553,7 +564,10 @@ FootbotRelay::calculate_target(vector<double> pos, bool d)
   			{
     			x = length_size[1];
   			}
- 
+ 			
+ 			cout << "x " << x << endl;
+			cout << "y " << y << endl;
+  			
   			temp_pos.push_back(x);
   			temp_pos.push_back(y);
 
@@ -562,6 +576,10 @@ FootbotRelay::calculate_target(vector<double> pos, bool d)
 	else
 	{
 		x = curr_x - max_agent_range;
+
+		cout << "x " << x << endl;
+		cout << "y " << y << endl;
+		
 		temp_pos.push_back(x);
 		temp_pos.push_back(y);
 
@@ -586,19 +604,29 @@ FootbotRelay::calculate_target(vector<double> pos, bool d)
     			x = length_size[0];
   			}
 
+  			cout << "x " << x << endl;
+			cout << "y " << y << endl;
+  			
   			temp_pos.push_back(x);
   			temp_pos.push_back(y);
 
  		}
 	}
+	cout << "x " << pos[0] << endl;
+	cout << "y " << pos[1] << endl;
+	
 	temp_pos.push_back(pos[0]);
 	temp_pos.push_back(pos[1]);
+    
+    cout << "Size of pos " << temp_pos.size() << endl;
+
 	return temp_pos;
 }
 
 void 
 FootbotRelay::ControlStep() 
 {   
+	bool send_message_to_basestation = false;
 	send_message_to_relay = false;
     if(m_Steps % 5 == 0 && m_Steps > 2)
 		/*** Saving the waypoints ***/
@@ -609,10 +637,9 @@ FootbotRelay::ControlStep()
 	neighbour_count = 0;
 
 	/***** Assigning target Position  *****/
-   if(relay_target_positions.size()==0)
-   	{ 
-
-   	while(pass)
+   if(calculate_pos && m_Steps >= 5 )
+   	{ 		
+   		/*while(pass)
 		{   
 		//cout << "position " << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << endl;
 		int min = 0, max = 1;
@@ -624,21 +651,35 @@ FootbotRelay::ControlStep()
 				pass = false;
 	    	}
 		
-		}
+		}*/
 
 		if (m_myID%2 == 0)
-		{
+		{   
+			if(counter < 0)
+			{
+				counter = 1;
+			}
 			tempBasePos = baseStationPosition[target_even[counter]];
 			relay_message.target_basestation = uint8_t(target_even[counter]);
+			relay_message.last_served_basestation = uint8_t(target_even[counter]);
 			cout << "target number" << target_even[counter] << endl;
+			counter = counter - 1;
+			
 			cout <<"MyId: " << m_myID << "target: " << relay_message.target_basestation << endl;
 		}
         else
-        {
+        {	
+        	if(counter < 0 )
+			{
+				counter = 1;
+			}
         	tempBasePos = baseStationPosition[target_odd[counter]];
         	relay_message.target_basestation = uint8_t(target_odd[counter]);
-        	//cout << "target number" << target_odd[counter] << endl;
-        	//cout <<"MyId: " << m_myID << "target: " << relay_message.target_basestation << endl;
+        	relay_message.last_served_basestation = uint8_t(target_odd[counter]);
+        	cout << "target number" << target_odd[counter] << endl;
+        	counter = counter - 1;
+        	
+        	cout <<"MyId: " << m_myID << "target: " << relay_message.target_basestation << endl;
         }
         	if(tempBasePos[0] < 0)
 			{
@@ -649,12 +690,14 @@ FootbotRelay::ControlStep()
 				direction = true;
 			}
 			relay_target_positions = calculate_target(tempBasePos,direction);
+			calculate_pos = false;
    	} 
    
-	else
+	else 
 	{
 		if(changePos)
 		{   
+
 			tempBasePos.clear();
 			tempBasePos.push_back(relay_target_positions[0]);
 			relay_target_positions.pop_front();
@@ -664,46 +707,63 @@ FootbotRelay::ControlStep()
 			meeting_data_file << m_Steps << "," << m_navClient->currentPosition().GetX() << " " << m_navClient->currentPosition().GetY() << "," << tempBasePos[0] << " "<<tempBasePos[1] << ",";
 			CVector3 targetPos(tempBasePos[0], tempBasePos[1], 0);
 			m_navClient->setTargetPosition(targetPos);
-			
 			changePos = false;
 	 	}
  	
 		else if(m_navClient->state() == target_state)
 		{   
-			send_message_to_relay = true;
-			meeting_data_file <<"," << m_Steps << "\n";
-			//agents.clear();
-			//data_exchange_agents.clear();
 			changePos = true;
-			visited_agents.clear();
-			relay_message.last_served_basestation = uint8_t(counter);
-			relay_message.last_served_time = (uint64_t)getTime();
-	        
-	        if(data_from_agents.size() > 0)
-	        {
-				// sending collected data to Base Station
-				char base_socket_msg[MAX_UDP_SOCKET_BUFFER_SIZE*2];
-				size_t collected_data_size = send_collected_data(base_socket_msg); 
-				
-				std::ostringstream str_tmp(ostringstream::out);
-		  		str_tmp << "fb_" << relay_message.target_basestation;
-		  		string str_Dest = str_tmp.str();
-
-		  		cout << "Base Station Target " << str_Dest << endl;
-				m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),base_socket_msg,collected_data_size);
-				data_from_agents.clear();
-
-				char *p = base_socket_msg;
-				for(int i=0;i < collected_data_size; i++)
-				{
-					printf("Sending message to Base Station %x\n",*p++);
-				}
-
+			
+			if(relay_target_positions.empty())
+			{
+				//wait_time = 5;
+				send_message_to_basestation = true;
+				//cout << "Reached BaseStation " << targetPos[0] << " " << targetPos[1] << endl;
+				calculate_pos = true;
+				relay_message.last_served_time = (uint64_t)getTime();
+			}
+			else
+			{
+				cout << "[" << m_myID << "]" << "Size of the target queue " << relay_target_positions.size() << endl; 
 			}
 		}
 
 	}
+    
 
+    if(send_message_to_basestation)
+    {   
+    	//cout << "[" << m_myID << "]" << "Before sending data to base station " << endl; 
+    	send_message_to_relay = true;
+		meeting_data_file <<"," << m_Steps << "\n";
+		//agents.clear();
+		//data_exchange_agents.clear();
+		changePos = true;
+		visited_agents.clear();
+        
+        if(data_from_agents.size() > 0)
+        {
+			// sending collected data to Base Station
+			char base_socket_msg[MAX_UDP_SOCKET_BUFFER_SIZE*2];
+			size_t collected_data_size = send_collected_data(base_socket_msg); 
+			
+			std::ostringstream str_tmp(ostringstream::out);
+	  		str_tmp << "fb_" << relay_message.target_basestation;
+	  		string str_Dest = str_tmp.str();
+
+	  		cout << "Base Station Target " << str_Dest << endl;
+			m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),base_socket_msg,collected_data_size);
+			data_from_agents.clear();
+
+			//char *p = base_socket_msg;
+			/*for(int i=0;i < collected_data_size; i++)
+			{
+				printf("Sending message to Base Station %x\n",*p++);
+			}*/
+
+		}
+		send_message_to_basestation = false;
+    }
 	
 
     /********  Send and Receive messages to and from mission agents ********/

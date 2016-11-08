@@ -33,7 +33,8 @@ FootbotMissionAgents::FootbotMissionAgents() :
   neighbour_agents_number(0),
   interval(10),
   time_one_run(2540),
-  wait_time(0)
+  wait_time(0),
+  discarded_data_count(0)
 {
 }
 
@@ -314,7 +315,7 @@ else if(sender_identifier == 'd')
   //uint32_t data_size = sizeof(double)*fake_data.size();
   
   //DEBUGCOMM("sending %d bytes to relay %s in range\n", data_size,str_Dest.c_str());
-  generated_data_info << m_Steps << "," << sizeof(double)*fake_data.size() << "," << relay_id << "\n";
+  generated_data_info << m_Steps << "," << fake_data.size() << "," << relay_id << "\n";
   m_pcWifiActuator->SendBinaryMessageTo(str_Dest.c_str(),agent_data,data_size);
   
   // time last data transmitted
@@ -340,53 +341,72 @@ FootbotMissionAgents::ControlStep()
   neighbour_agents_number = 0;
   
   
-  if(m_Steps % time_one_run == 0)
+  
+  if(fake_data.size() > time_one_run)
   { 
     //uint32_t d_size = sizeof(double)*
-    generated_data_info << m_Steps << "," << fake_data.size() << "discared data " << "\n";
-    fake_data.clear();
+    //cout << "POPPING " << endl;
+    generated_data_info << m_Steps << "," << discarded_data_count << ","<< "discared data " << "\n";
+    //fake_data.pop_front();
+    discarded_data_count++;
+  }
+  else
+  {
+    uint8_t temp = 1;
+    fake_data.push_back(temp);
   }
 
   /*** Saving the waypoints ***/
   if(m_Steps % 5 == 0 && m_Steps > 2)
   {
     data_file << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
-    uint8_t temp = 1;
-    fake_data.push_back(temp);
+    
   }
  
-
-  if(reachedTarget)
-    {
-      if(wait_time > 0)
+  //if(wait_time == m_Steps)
+  //{
+    if(reachedTarget)
       { 
-        wait_time = wait_time-1;
-      }
-      else
-      {
+        //DEBUGCOMM("Wait time %d \n", wait_time);
+        if(wait_time > 0)
+        { 
+          wait_time = wait_time-1;
+         
+          m_navClient->stop();
+          
+        }
+        else if(wait_time == 0)
+        { 
+        m_navClient->start(); 
         CVector3 randomPoint(target_positions[0],target_positions[1],0);
         m_navClient->setTargetPosition( randomPoint );
         printf("Robot [%d] selected random point %.2f %.2f\n",
          m_myID,randomPoint.GetX(),randomPoint.GetY());
         reachedTarget = false;
+        }
       }
-    }
-  else if(m_navClient->state() == target_state)
-    { 
-      CVector3 temp = randomWaypoint();
+    else if(m_navClient->state() == target_state)
+      { 
+        //DEBUGCOMM("inside target Wait time %d \n", wait_time);
+        CVector3 temp = randomWaypoint();
 
-      // removing the target which is already reached
-      target_positions.erase(target_positions.begin(),target_positions.begin()+1);
-      target_positions.erase(target_positions.begin(),target_positions.begin()+1);
-      
-      target_positions.push_back(temp[0]);
-      target_positions.push_back(temp[1]);
-      
-      // Once the agent reaches target it has to wait there for few seconds (collecting data)
-      reachedTarget = true;
-      wait_time = m_randomGen->Uniform(CRange<Real>(4,10))*20;
-    }
-
+        // removing the target which is already reached
+        target_positions.erase(target_positions.begin(),target_positions.begin()+1);
+        target_positions.erase(target_positions.begin(),target_positions.begin()+1);
+        
+        target_positions.push_back(temp[0]);
+        target_positions.push_back(temp[1]);
+        
+        // Once the agent reaches target it has to wait there for few seconds (collecting data)
+        reachedTarget = true;
+        Real temp_rand = m_randomGen->Uniform(CRange<Real>(5,10));
+        wait_time = (uint8_t)temp_rand*20;
+        //wait_time = 450;
+        cout << "random " << (uint8_t)temp_rand*10 << "time step " << m_Steps << "wait_ time " << wait_time << endl; 
+        DEBUGCOMM("temp, Wait time, time_step %f %d %lu", (uint8_t)temp_rand*10, wait_time, m_Steps);
+        
+      }
+  //}
 
    /*** send message to other agents ***/
   if(m_Steps%10 == 0)
