@@ -1,0 +1,349 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <!-- ************************* -->
+  <!-- * General configuration * -->
+  <!-- ************************* -->
+  <framework>
+    <system threads="0" />
+    <experiment length="1000"
+                ticks_per_second="10"
+                random_seed="0" />
+  </framework>
+
+  <!-- *************** -->
+  <!-- * Controllers * -->
+  <!-- *************** -->
+  <controllers>
+
+    <!-- controller for the virtual robot-->
+    <footbot_central_controller id="fcentral"
+      library="build/controllers/footbot_central/libfootbot_central_controller.so">
+      <actuators>
+
+	     <footbot_wheels implementation="default" />
+	     <footbot_leds   implementation="default" medium = "leds"/>
+	     <footbot_beacon   implementation="default" />
+      </actuators>
+      <sensors>
+
+      </sensors>
+      <parameters alpha="7.5" delta="0.001" velocity="0"/>
+    </footbot_central_controller>
+
+    <!-- controller for the mission robot-->
+    
+     <footbot_mission_agent_controller id="fnav" 
+     library="build/controllers/footbot_mission_agents/libfootbot_mission_agents.so">
+    
+       <actuators>
+  	      <wifi implementation="extern" />
+        <footbot_wheels implementation="default" />
+        <footbot_leds   implementation="default" />
+	      <footbot_beacon   implementation="default" />
+      </actuators>
+      <sensors>
+	      <wifi implementation="extern" range="1.0" probability="1"/>
+	      <footbot_proximity implementation="rot_z_only" 
+			   show_rays="false" calibrate="true" />
+        <footbot_encoder implementation="default"/>
+      </sensors>
+      <parameters alpha="7.5" delta="0.001" velocity="10" interval="10" generators="0.4">
+
+	     <optimalSpeed>0.05</optimalSpeed>
+	     <safetyMargin>0.1</safetyMargin>
+	     <socialMargin>0.1</socialMargin>
+	     <resolution>201</resolution>
+	     <horizon>5</horizon>
+	     <timeHorizon>5.0</timeHorizon>
+	     <aperture>3.2</aperture>
+	     <tau>0.125</tau>
+	     <eta>0.5</eta>
+	     <local_navigation type="HL" NH="true"/>
+	     <rotationTau>0.5</rotationTau>
+	     <experiment name="Demo" duration="3000000" log="false"/>
+
+	     <mobilitycontrol mode="MANUAL" />
+
+	     <active_sensors gyroscope="false" rab="false" proximity="false" ground="false" distance_scanner="false"/>
+	     <mobility rotation_max_speed='0.1' continuous='false'/>
+	     <led_debugging leds="true" beacon="true" beacon_intensity="10"/>
+	     <rab min_particle_separation="0.4" particle_age="5.0" min_particle_confidence="0.1"/>
+	<!-- Min distance from the current position to the target position to determine it this is reached (meters)-->
+  
+	     <targetMinPointDistance>0.4</targetMinPointDistance>
+	<!-- Area bounds -->
+  <!--
+	     <originAreaX>0.0</originAreaX>
+	     <originAreaY>0.0</originAreaY>
+	     <destinationAreaX>8.0</destinationAreaX>
+	     <destinationAreaY>6.5</destinationAreaY>
+  -->
+   
+       <originAreaX>-4.5</originAreaX>
+       <originAreaY>-4.5</originAreaY>
+       <destinationAreaX>4.5</destinationAreaX>
+       <destinationAreaY>4.5</destinationAreaY>
+     </parameters>
+
+   
+    </footbot_mission_agent_controller>
+
+    <!-- controller for baseStation--> 
+    
+    <footbot_baseStation_controller id="fbase" 
+     library="build/controllers/footbot_baseStation/libfootbot_baseStation.so">
+
+      <actuators>
+        <wifi implementation="extern" />
+        <footbot_wheels implementation="default" />
+        <footbot_leds implementation="default" />
+        <footbot_beacon implementation="default" />
+      </actuators>
+
+      <sensors>
+        <wifi implementation="extern" />
+      </sensors>
+
+      <parameters alpha="7.5" delta="0.001" velocity="0">
+        <mobilitycontrol mode="LCM" />
+
+        <led_debugging leds="true" beacon="true" beacon_intensity="10"/>
+         <!-- Area bounds -->
+       <originAreaX>-4.5</originAreaX>
+       <originAreaY>-4.5</originAreaY>
+       <destinationAreaX>4.5</destinationAreaX>
+       <destinationAreaY>4.5</destinationAreaY>
+
+      </parameters>
+
+
+    </footbot_baseStation_controller>
+
+    
+     <!-- controller for the relay robot-->
+     
+    <footbot_relay_controller id="frelay" 
+      library="build/controllers/footbot_relay/libfootbot_relay.so">
+    
+       <actuators>
+       <!--<wifi implementation="default"  range="20" probability="1"/>-->
+       <!-- range = -1 is to have the range of relays throughout irrespective of the area --> 
+        <wifi implementation="dual" range="-1" probability="1"/>
+	    <!-- <wifiextern implementation="default" />-->
+        <footbot_wheels implementation="default" />
+        <footbot_leds   implementation="default" />
+        <footbot_beacon   implementation="default" />
+
+      </actuators>
+
+      <sensors>
+        <!-- <wifi implementation="extern" />-->
+         <wifi implementation="dual" />
+  
+        <footbot_proximity implementation="rot_z_only" 
+         show_rays="false" calibrate="true" />
+        <footbot_encoder implementation="default"/>
+      </sensors>
+
+      <parameters alpha="7.5" delta="0.001" velocity="15" interval="10" generators="0.4">
+       <optimalSpeed>0.2</optimalSpeed>
+       <safetyMargin>0.1</safetyMargin>
+       <socialMargin>0.1</socialMargin>
+       <resolution>201</resolution>
+       <horizon>5</horizon>
+       <timeHorizon>5.0</timeHorizon>
+       <aperture>3.2</aperture>
+       <tau>0.125</tau>
+       <eta>0.5</eta>
+       <local_navigation type="HL" NH="true"/>
+       <rotationTau>0.5</rotationTau>
+       <experiment name="Demo" duration="3000000" log="false"/>
+
+       <mobilitycontrol mode="MANUAL" />
+
+       <active_sensors gyroscope="false" rab="false" proximity="false" ground="false" distance_scanner="false"/>
+       <mobility rotation_max_speed='0.1' continuous='false'/>
+       <led_debugging leds="true" beacon="true" beacon_intensity="10"/>
+       <rab min_particle_separation="0.4" particle_age="5.0" min_particle_confidence="0.1"/>
+  <!-- Min distance from the current position to the target position to determine it this is reached (meters)-->
+  
+       <targetMinPointDistance>0.40</targetMinPointDistance>
+  <!-- Area bounds -->
+ 
+       <originAreaX>-4.5</originAreaX>
+       <originAreaY>-4.5</originAreaY>
+       <destinationAreaX>4.5</destinationAreaX>
+       <destinationAreaY>4.5</destinationAreaY>
+       
+       <NumberOfBaseStation param="1"/>
+       <BaseStation1 param="position" x="-1.0" y="-2.0"/>
+     <!--   <BaseStation2 param="position" x= "9.0" y="-9.0"/>
+       <BaseStation3 param="position" x= "9.0" y= "9.0"/>
+       <BaseStation4 param="position" x="-9.0" y= "9.0"/> -->
+       
+
+       <Length param="value" origin="-2.0" destination="2.0"/>
+       <Breadth param="value" origin="-2.0" destination="2.0"/>
+       <Agentrange>1.0</Agentrange>
+
+    </parameters>
+    </footbot_relay_controller>
+   
+  </controllers>
+
+
+  <!-- *********************** -->
+  <!-- * Arena configuration * -->
+  <!-- *********************** -->
+  
+  <!--
+  <arena size="10, 10, 1">
+
+   <box id="wall_north"
+	 position="25,50,0"
+	 orientation="0,0,0"
+	 size="50,0.1,0.5"
+	 movable="false" />
+    <box id="wall_south"
+	 position="25,0,0"
+	 orientation="0,0,0"
+	 size="50,0.1,0.5"
+	 movable="false" />
+    <box id="wall_east"
+	 position="50,25,0"
+	 orientation="0,0,0"
+	 size="0.1,50,0.5"
+	 movable="false" />
+    <box id="wall_west"
+	 position="0,25,0"
+	 orientation="0,0,0"
+	 size="0.1,50,0.5"
+	 movable="false" />
+  -->  
+  <!-- Size = Length of the boundary, width, height /-->
+   <arena size="10, 10, 1" positional_grid_size="0.5,0.5,1">
+
+    <box id="wall_north"
+         position="0,5.0,0"
+         orientation="0,0,0"
+         size="10.0,0.1,0.5"
+         movable="false" />
+    <box id="wall_south"
+         position="0,-5.0,0"
+         orientation="0,0,0"
+         size="10.0,0.1,0.5"
+         movable="false" />
+    <box id="wall_east"
+         position="5.0,0,0"
+         orientation="0,0,0"
+         size="0.1,10.0,0.5"
+         movable="false" />
+    <box id="wall_west"
+         position="-5.0,0,0"
+         orientation="0,0,0"
+         size="0.1,10.0,0.5"
+         movable="false" />
+
+    <!--
+        You can distribute entities randomly. Here, we distribute
+        the entities in this way:
+        - the position is uniformly distributed
+        on the ground, in the square whose corners are (-1,-1) and (1,1)
+        - the orientations are non-zero only when rotating around Z and chosen
+        from a gaussian distribution, whose mean is zero degrees and
+        standard deviation is 360 degrees.
+    -->
+
+    <foot-bot id="fb_0"
+	    position="-6.0,-6.0,0"
+	    orientation="1,1,0"
+	    wifi_enabled="false"
+	    controller="fcentral" />
+   
+    <foot-bot id="fb_1"
+        position="-4.5,-4.5,0"
+        orientation="1,1,0"
+        wifi_enabled="true"
+        controller="fbase" />
+
+  
+    <!--<foot-bot id="fb_2"
+        position="-2.0,-2.5,0"
+        orientation="1,1,0"
+        wifi_enabled="true"
+        controller="frelay" /-->
+
+    <foot-bot id="fb_2"
+        position="-4.0,-2.0,0"
+        orientation="1,1,0"
+        wifi_enabled="true"
+        controller="fnav" />
+  
+   <!-- <distribute>
+      <position method="uniform" min="-2,-2,0" max="2,2,0" />
+      <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
+      <entity quantity="1" max_trials="100" base_num="3" >
+      <foot-bot id="fb" controller="fnav" />
+      </entity>
+    </distribute> 
+
+
+    <distribute>
+      <position method="grid" center = "0,0,0" distances = "0.3,0.3,0" layout="4,4,1" />
+      <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
+      <entity quantity="1" max_trials="100" base_num="4" >
+      <foot-bot id="fb" controller="fnav" />
+      </entity>
+    </distribute> -->
+   
+   <!--  
+	this is necessary for robonetsim
+    -->
+    <wifi-medium id="wm" number_of_nodes="2"/>
+  </arena>
+  <media>
+    <led id="leds" />
+  </media>
+
+  <!-- ******************* -->
+  <!-- * Physics engines * -->
+  <!-- ******************* -->
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <!-- ************************************ -->
+  <!-- * Arena -> Physics Engines mapping * -->
+  <!-- ************************************ -->
+  <arena_physics>
+    <engine id="dyn2d">
+      <!--
+          You can use a regular expression to bind a set of entities.
+          See 'man 3 regex' to know more about regular expressions.
+      -->
+      <entity id="fb_[[:digit:]]*" />
+      <entity id="wall_north" />
+      <entity id="wall_south" />
+      <entity id="wall_east" />
+      <entity id="wall_west" />
+    </engine>
+  </arena_physics>
+ 
+  <!-- ****************** -->
+  <!-- * Visualization * -->
+  <!-- ****************** -->
+  <visualization>
+    <qtopengl_render splash="true">
+	  <camera>
+		<placement idx="0" position="0,0,1" look_at="4.5,4.5,0" />
+    <placement idx="1" position="4.5,0,1" look_at="-4.5,4.5,0" />
+    <placement idx="2" position="0,4.5,1" look_at="4.5,-4.5,0" />
+    <placement idx="3" position="0,0,1" look_at="-4.5,-4.5,0" />
+    <placement idx="4" position="3.0,3.0,3" look_at="0,0,0" />
+    <placement idx="5" position="0.0,0.0,5" look_at="0,0,0" />
+	  </camera>
+    </qtopengl_render>  
+  </visualization>
+
+</argos-configuration>
