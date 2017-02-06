@@ -1,4 +1,4 @@
- #include "footbot_relay.h"
+#include "footbot_relay.h"
 
 
 #ifndef FOOTBOT_SIM
@@ -28,26 +28,82 @@
 FootbotRelay::FootbotRelay() :
 	RandomSeed(12345),
 	m_Steps(0),
-	m_randomGen(0),
-	sep(" :,"),
-	counter(1),
-	NumberOfBaseStation(1),
-	changePos(true),
 	target_state(STATE_ARRIVED_AT_TARGET),
-	min(1),
-	neighbour_count(0),
-	max_agent_range(2.0),
-	calculate_pos(true),
-	max_time_interval_to_visit_bs(5*60*10),
-	time_since_visited_basestation(0),
-	send_message_to_relay(false)   //// Positions for 3 minutes -> 3*60*20 but positions 
-	{                                    //// are calculated only every 10 timestep
+	search_time(0)
+	{}
+
+
+
+FootbotRelay::SStateData::SStateData()
+{
+	IsGoalSet = false;
+	
+	IsAgentDetected = false; 
+	collected_data_size = 0;
+	State = SStateData::STATE_SEARCH;
+	SearchState = SStateData::To_AGENT;
+  IsAgentDetected = false;
+  
+  
+	/****Calculate time limit and min data size ****/
+	
+}
+
+/*FootbotRelay::SpiralData::SpiralData()
+{
+  sequence = 0;
+  spiral_count = 1; // Agent range
+  possibleDirections.assign(4,true); // assign 4 directions to true initially
+  clockwise = true;
+}*/
+
+FootbotRelay::SAgentData::SAgentData()
+{
+	IsGoalSet = false;
+}
+
+void
+FootbotRelay::SStateData::Init(TConfigurationNode& t_node)
+{
+	
+	printf(" number of base station  %d \n", NUMBER_OF_BASESTATION);
+	Position loc; 
+	
+	//NUMBER_OF_BASESTATION ;
+	for(int i=0; i< NUMBER_OF_BASESTATION; i++)
+	{   
+		ostringstream temp_str;
+		temp_str << "base_station" <<  i+1;
+
+		GetNodeAttribute(GetNode(t_node, temp_str.str()), "x", loc.x);
+		GetNodeAttribute(GetNode(t_node, temp_str.str()), "y", loc.y);
+		base_station.push_back(loc);	
+		printf("Base Station position %f %f", loc.x, loc.y);
+	}
+
+}
+
+void
+FootbotRelay::SAgentData::Init(TConfigurationNode& t_node)
+{
+	
+	Position loc; 
+	//NUMBER_OF_BASESTATION ;
+	for(int i=0; i< NUMBER_OF_AGENT; i++)
+	{   
+		ostringstream temp_str;
+		temp_str << "agent" << i+1;
+		
+		GetNodeAttribute(GetNode(t_node, temp_str.str()), "x", current_location.x);
+		GetNodeAttribute(GetNode(t_node, temp_str.str()), "y", current_location.y);
+		printf("agent pos %f %f", current_location.x, current_location.y);	
 
 	}
 
+}
 
 
-	void 
+void 
 FootbotRelay::Init(TConfigurationNode& t_node) 
 { 
 	
@@ -65,26 +121,34 @@ FootbotRelay::Init(TConfigurationNode& t_node)
 
 	/// Random
 	GetNodeAttributeOrDefault(t_node, "RandomSeed", RandomSeed, RandomSeed);
-	GetNodeAttributeOrDefault(t_node, "NumberOfBaseStation", NumberOfBaseStation, NumberOfBaseStation);
-	GetNodeAttributeOrDefault(t_node, "Agentrange", max_agent_range, max_agent_range);
-	
-	/// Stores Base Station positions
-	for (size_t i=1; i <= NumberOfBaseStation ; i++)
-	{
-	 	string str = "BaseStation" + to_string(i);
-		TConfigurationNode node = GetNode(t_node, str);	
-		
-		vector<double> basePos = getBaseStationPositions(node);
-		baseStationPosition.insert(pair<uint8_t, vector<double> >(i,basePos));
- 		
-	}
-    
-    TConfigurationNode node = GetNode(t_node, "Length");
-    length_size = getValues(node,max_agent_range);
-    node = GetNode(t_node, "Breadth");
-    breadth_size = getValues(node,max_agent_range);
-    
 
+	string temp;
+	GetNodeText(GetNode(t_node, "destinationAreaX"), temp);
+	size_x = atof(temp.c_str());
+
+	GetNodeText(GetNode(t_node, "destinationAreaY"),temp);
+	size_y = atof(temp.c_str());
+
+	GetNodeText(GetNode(t_node, "numberofrelay"), temp);
+	stateData.NUMBER_OF_RELAY = atoi(temp.c_str());
+
+	GetNodeText(GetNode(t_node, "numberofBS"), temp);
+	stateData.NUMBER_OF_BASESTATION = atoi(temp.c_str());
+
+  DEBUGCOMM("Number of base_station: %d \n ", stateData.NUMBER_OF_BASESTATION);
+	
+  GetNodeText(GetNode(t_node, "numberofAgent"), temp);
+	agentData.NUMBER_OF_AGENT = atoi(temp.c_str());
+
+
+	string speed_string;
+	if (NodeExists(t_node, "optimalSpeed")) 
+  {
+    GetNodeText(GetNode(t_node, "optimalSpeed"), speed_string);
+    sscanf(speed_string.c_str(), "%f", &speed);
+  }
+	
+      
     
 	if( m_randomGen == NULL )
 		{
@@ -109,541 +173,424 @@ FootbotRelay::Init(TConfigurationNode& t_node)
 	/// create the client and pass the configuration tree (XML) to it
 	m_navClient = new RVONavClient(m_myID, GetRobot());
 	m_navClient->init(t_node);
-
+ 
 	/// start the navigation client
 	m_navClient->start(); 
- 
-	m_pcLEDs->SetAllColors(CColor::MAGENTA);
-
-	m_incomingMsg = new char[MAX_UDP_SOCKET_BUFFER_SIZE];
-	//m_relaySocketMsg = new char[MAX_UDP_SOCKET_BUFFER_SIZE];
-	max = NumberOfBaseStation;
-	//cout << "number of times q" << number_of_times++ << endl;
-    
-    //////////////////////////////////////////////////////////////
-	// Initialize table map with initial position of agents
-	//////////////////////////////////////////////////////////////
-	NumberOfMissionAgents = 7;
-	InitialiseAgentTable(NumberOfMissionAgents);
-
-	// file to save the data
-  	filename = "data_"+ to_string(m_myID)+".csv";
-  	data_file.open(filename, ios::out | ios::ate | ios::app);
-    
-    received_file = "received_data_"+ to_string(m_myID)+".csv";
-  	received_message_file.open(received_file, ios::out | ios::ate | ios::app);
-  	received_message_file << "Time_step" << "," << "Message_type" << "," <<"Received_From"  << "," << "Position" << "\n"; 
- 
-  	meeting_file = "meeting_data_"+to_string(m_myID)+".csv";
-  	meeting_data_file.open(meeting_file, ios::out | ios::ate | ios::app);
-    
-  	meeting_data_file << "Timestep" << "," << "Starting point"<< "," << "Target"<< "," << "Agents" << "," << "Reached_timestep" << "\n";
- 	
- 	 
-}
-
-void 
-FootbotRelay::InitialiseAgentTable(uint8_t numberofagents)
-{   
-    vector<double> agent_pos;
-    agent_pos.push_back(-12.3);
-    agent_pos.push_back(16.5);
-    agent_pos.push_back(0.0);
-    agent_pos.push_back(0.0);
-    agent_pos.push_back(6.25);
-    agent_pos.push_back(-18.7);
-    agent_pos.push_back(-24.25);
-    agent_pos.push_back(-12.7);
-    agent_pos.push_back(24.48);
-    agent_pos.push_back(6.0);
-    agent_pos.push_back(-11.29);
-    agent_pos.push_back(8.15);
-    agent_pos.push_back(21.6);
-    agent_pos.push_back(-27.52);
-    
-    int count = 0;
-
- 	/*for(int i = 4 ; i < numberofagents+4 ; i++)
- 	{
- 		
-		agent_details.agent_status = true;
-		agent_details.goal_pos_x  = 0.0;
-		agent_details.goal_pos_y  = 0.0;
-		agent_details.current_x  = agent_pos[count];
-		agent_details.current_y  = agent_pos[count+1];
-		agent_details_map.insert(std::pair <uint8_t, Agent_details> (i,agent_details));
-		(uint64_t)t_met = m_randomGen->Uniform(CRange<uint8_t>(1,20));
-		while(agent_time_details.find((uint64_t)t_met)!=agent_time_details.end())
-		{
-			(uint64_t)t_met = m_randomGen->Uniform(CRange<uint8_t>(1,20));
-		}
-		agent_time_details.insert(bmtype::valuetype(i,(uint64_t)t_met));
-		count = count + 2;
- 	}*/
+	m_pcLEDs->SetAllColors(CColor::MAGENTA); 
 	
-}
-
-vector<double> 
-FootbotRelay::getBaseStationPositions(TConfigurationNode node)
-{ 
-	vector<double> pos;
-	string temp;
-	GetNodeAttribute(node, "x", temp);
-	pos.push_back(stod(temp));
-	GetNodeAttribute(node, "y", temp);
-	pos.push_back(stod(temp));
-	return pos;
-}
-
-vector<double> 
-FootbotRelay::getValues(TConfigurationNode node, double agent_range)
-{ 
-	vector<double> size;
-	string temp;
-	GetNodeAttribute(node, "origin", temp);
-	size.push_back(stod(temp)+agent_range);
-	GetNodeAttribute(node, "destination", temp);
-	size.push_back(stod(temp)-agent_range);
-	return size;
-}
-
-uint8_t FootbotRelay::getNeighbourInfo()
-{
-	return 0;
-}
-
-size_t FootbotRelay::createProfileMessage(char *outptr)
-{   
-	long unsigned int initial_address =  (long unsigned int)&(*outptr);
-  	printf("sending message to relay \n");
-    //printf("beginning %lu\n", initial_address);
-
-    char message_type = 'r';
-    memcpy(outptr, &message_type, sizeof(message_type));
-    outptr = outptr + sizeof(message_type);
-    //printf("%c\n", message_type);
-
-    memcpy(outptr, &relay_message.message_size, sizeof(relay_message.message_size));
-    outptr = outptr + sizeof(relay_message.message_size); 
-    
-   /// Id of relay
-   /// Id - uint8_t
-	relay_message.relay_id = (uint8_t)m_myID;
-    memcpy(outptr, &relay_message.relay_id, sizeof(relay_message.relay_id));
-	outptr = outptr + sizeof(relay_message.relay_id);
-	//printf("Relay Id %d\n", relay_message.relay_id);
-
-	/// Relay Position - (x,y in double)
-	relay_message.relay_current_x = (double) m_navClient->currentPosition().GetX();
-	relay_message.relay_current_y = (double) m_navClient->currentPosition().GetY();  
-       
-	memcpy(outptr, &relay_message.relay_current_x, sizeof(relay_message.relay_current_x));
-	outptr = outptr + sizeof(relay_message.relay_current_x);
-	
-  	memcpy(outptr, &relay_message.relay_current_y, sizeof(relay_message.relay_current_y));
-	outptr = outptr + sizeof(relay_message.relay_current_y);
-	
-	//printf("Relay pos x %f\n", relay_message.relay_current_x);
-	//printf("Relay pos y %f\n", relay_message.relay_current_y);
-
-	/// Current time - uint64
-	relay_message.time_message_sent = (uint64_t)getTime();
-	memcpy(outptr, &relay_message.time_message_sent, sizeof(relay_message.time_message_sent));
-	outptr = outptr + sizeof(relay_message.time_message_sent);
-	//printf("time mes sent %u\n", relay_message.time_message_sent);
-
-	
-	// neighbours- uint8_t
-	relay_message.number_neighbors = (uint8_t)neighbour_count;
-	memcpy(outptr, &relay_message.number_neighbors, sizeof(relay_message.number_neighbors));
-	outptr = outptr + sizeof(relay_message.number_neighbors);
-    //printf("Neighbour %d\n", relay_message.number_neighbors);
-
-	memcpy(outptr, &relay_message.target_basestation, sizeof(relay_message.target_basestation));
-	outptr = outptr + sizeof(relay_message.target_basestation);
-	//printf("target BS %d\n", relay_message.target_basestation);
-
-	memcpy(outptr, &relay_message.last_served_time, sizeof(relay_message.last_served_time));
-	outptr = outptr + sizeof(relay_message.last_served_time);
-	//printf("Last srerved time %u\n", relay_message.last_served_time);
-
-    memcpy(outptr, &relay_message.last_served_basestation, sizeof(relay_message.last_served_basestation));
-	outptr = outptr + sizeof(relay_message.last_served_basestation);
-	//printf("last served BS %d\n", relay_message.last_served_basestation);
+  //printf("Random num %d\n", m_randomGen->Uniform(CRange<UInt32>(1,50)));
+  //agentData.time_last_visited = m_randomGen->Uniform(CRange<UInt32>(1,50));
 	
 
-	long unsigned int final_address = (long unsigned int)&(*outptr);
+	stateData.time_limit = 2*getTimeLimit(size_x,size_y);
+  stateData.min_data_size = 0.4*stateData.time_limit*(agentData.NUMBER_OF_AGENT/stateData.NUMBER_OF_RELAY); // 40 % of data from each agent assigned to it
+  stateData.time_for_each_agent = ((stateData.time_limit - (stateData.time_limit/2)) / agentData.NUMBER_OF_AGENT);
 
-	relay_message.message_size = final_address-initial_address;
-	//printf("Size of message sent: %d\n",relay_message.message_size);
-	return size_t(relay_message.message_size);
-} 
+  DEBUGCOMM("Initialising agent and base station positions \n");
+	/****Initialising Agent and Base Station positions ****/
+	stateData.Init(GetNode(t_node, "state"));
+	agentData.Init(GetNode(t_node, "agent"));
 
-size_t 
-FootbotRelay::createMessageToMissionAgents(char* out_to_agent)
-{ 
-  long unsigned int initial_address =  (long unsigned int)&(*out_to_agent);
-  
-  /// identifier - 10 (relay) 0(agent) to identify relay message 
-  char identifier = 'c'; 
-  DEBUGCOMM("Size of character %d\n", sizeof(identifier));
-  memcpy(out_to_agent,&identifier,sizeof(identifier));
-  out_to_agent = out_to_agent + sizeof(identifier);
-  
-  uint8_t id = (uint8_t)m_myID;
-  memcpy(out_to_agent,&id,sizeof(id));
-  out_to_agent = out_to_agent + sizeof(id);
-  
-  long unsigned int final_address = (long unsigned int)&(*out_to_agent);
-  return size_t(final_address-initial_address);
-}
-
-void
-FootbotRelay::parse_agent_message(vector<char> &incoming_agent_message)
-{
-  
-  char* agent_mes_ptr = (char*)&incoming_agent_message[0];
-  
-  DEBUGCOMM("parsing agent message\n");
-  
-  char mes_type = (char)agent_mes_ptr[0];
-  agent_mes_ptr = agent_mes_ptr + sizeof(mes_type);
-
-  if(mes_type == 'a')
-  {  
-    neighbour_count = neighbour_count + 1;
-    
-
-  	//DEBUGCOMM("profile message from agent\n");
-
-  	memcpy(&agent_message.message_size, agent_mes_ptr, sizeof(agent_message.message_size));
-    agent_mes_ptr = agent_mes_ptr+sizeof(agent_message.message_size);
-
-  	// Agent id
-  	agent_message.agent_id = agent_mes_ptr[0];
-  	agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.agent_id);
-  	
-  	//DEBUGCOMM("agent id %d\n",agent_message.agent_id);
-
-  	if(check_set.find(agent_message.agent_id) == check_set.end())
-  	{
-  		check_set.insert(agent_message.agent_id);
-  		agent_ids.push(agent_message.agent_id);
-  	}
-  	
-    
-    // Time when message is sent
+  relayPositions.filename = "position" + to_string(m_myID)+".csv";
+  relayPositions.data_file.open(relayPositions.filename, ios::out | ios::ate);
    
-    memcpy(&agent_message.time_message_sent, agent_mes_ptr, sizeof(agent_message.time_message_sent));
-    //DEBUGCOMM("time sent %u\n",agent_message.time_message_sent);
-    agent_mes_ptr+=sizeof(agent_message.time_message_sent);
+}
 
-    // Agent pos
-    memcpy(&agent_message.agent_current_x, agent_mes_ptr, sizeof(agent_message.agent_current_x));
-    agent_mes_ptr+= sizeof(agent_message.agent_current_x);
-
-    memcpy(&agent_message.agent_current_y, agent_mes_ptr, sizeof(agent_message.agent_current_y));
-    agent_mes_ptr+= sizeof(agent_message.agent_current_y);
-    
-    //printf("agent pos x %f\n", agent_message.agent_current_x);
-	//printf("AGENT pos y %f\n", agent_message.agent_current_y);
-
-
-    // last time when the data is transmitted
-    memcpy(&agent_message.time_last_data_transmitted,agent_mes_ptr,sizeof(agent_message.time_last_data_transmitted));
-    agent_mes_ptr+= sizeof(agent_message.time_last_data_transmitted);
-    //DEBUGCOMM("LAST DATA transmitted %u\n",agent_message.time_last_data_transmitted);
-
-    // number of neighbours
-    agent_message.number_neighbors = (uint8_t)agent_mes_ptr[0];
-    agent_mes_ptr = agent_mes_ptr+ sizeof(agent_message.number_neighbors);
-    //DEBUGCOMM("number of neighbours for agent %d\n",agent_message.number_neighbors);
-
-    //timestep
-    memcpy(&agent_message.timestep, agent_mes_ptr, sizeof(agent_message.timestep));
-    agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.timestep);
-    //DEBUGCOMM("timestep %d\n", agent_message.timestep);
-
-    // future position
-    memcpy(&agent_message.target_pos_x, agent_mes_ptr, sizeof(agent_message.target_pos_x));
-    agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.target_pos_x);
-    //DEBUGCOMM("target X %d\n", agent_message.target_pos_x);
-
-    memcpy(&agent_message.target_pos_y, agent_mes_ptr, sizeof(agent_message.target_pos_y));
-    agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.target_pos_y);
-    //DEBUGCOMM("target Y %d\n", agent_message.target_pos_y);
-    
-    // amount of data available from the agent
-    memcpy(&agent_message.data_available, agent_mes_ptr, sizeof(agent_message.data_available));
-    agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.data_available);
-    DEBUGCOMM("Amount of data available %lu\n", agent_message.data_available);
-    
-    DEBUGCOMM("done parsing agent message\n");
-
-    struct Agent_details temp_data;
-    temp_data.goal_pos_x = agent_message.target_pos_x;
-    temp_data.goal_pos_y = agent_message.target_pos_y;
-    temp_data.current_x = agent_message.agent_current_x;
-    temp_data.current_y = agent_message.agent_current_y;
-    temp_data.agent_status = true;
-	agent_details_map[agent_message.agent_id] = temp_data;	
-	//agent_time_details.left[] = 0; 
-	
-	}
-  else if(mes_type =='b')
-  { 
-    uint8_t temp_id;
-    memcpy(&temp_id,agent_mes_ptr,sizeof(temp_id));
-    agent_mes_ptr = agent_mes_ptr + sizeof(temp_id);
-
-    memcpy(&agent_data.time_data_sent, agent_mes_ptr, sizeof(agent_data.time_data_sent));
-    agent_mes_ptr = agent_mes_ptr + sizeof(agent_data.time_data_sent);
-
-	neighbour_count = neighbour_count + 1;
-  	DEBUGCOMM("Received data from agents\n");
-      /// Receiving and storing data
-  	 
-  	memcpy(&agent_data.data_size,agent_mes_ptr,sizeof(agent_data.data_size));
-  	agent_mes_ptr = agent_mes_ptr + sizeof(agent_data.data_size);
-  	
-  	DEBUGCOMM("Relay knows the size of data: %d sent \n",(agent_data.data_size));
-  	/// -5 is 4 - uint32 message size and 1 - uint8 for message type identifier
-  	//char data_collected[(agent_data.data_size)];
-  	//memcpy(&data_collected, agent_mes_ptr, sizeof(data_collected));
-  	
-  	//unsigned arr_size = sizeof(data_collected)/sizeof(char);
-  	 
-  	//agent_data.fake_data.insert(agent_data.fake_data.end(), &data_collected[0], &data_collected[arr_size]);
-    
-    map<uint8_t, vector<Agent_data_info> >::iterator itr = data_from_agents.find(temp_id);
-	
-	if(itr != data_from_agents.end())
-	{  
-   		data_from_agents[temp_id].push_back(agent_data);		
+uint64_t 
+FootbotRelay::getTimeLimit(float x, float y)
+{   
+	UInt64 temp_time;
+    // time limit ---> time taken to cover twice the length of diagonal
+	if(x == y)
+	{
+		temp_time = (2*x*sqrt(2)*10)/speed; // speed of relay in m/timestep, 2*x = X full length.
 	}
 	else
-	{ 
-  		vector<Agent_data_info> data_info;
-    	data_info.push_back(agent_data);
-  		data_from_agents.insert(std::pair <uint8_t, std::vector<Agent_data_info> >(temp_id, data_info));
+	{
+		temp_time = (2*sqrt(pow((x),2) + pow((y),2))*10)/speed;
 	}
-  	
-
-  }
-
-  else if(mes_type == 'm')
-  {
-  	neighbour_count = neighbour_count + 1;
-  }
+	return temp_time;
 }
 
-void
-FootbotRelay::parse_relay_message(std::vector<char> &incomingMsg)
-{   
-
-	char *cntptr = (char*)&incomingMsg[0];
-    
-	char mes_type = (char)cntptr[0];
-	cntptr = cntptr + sizeof(mes_type);
-    
-    if(mes_type == 'r')
-    {
-	/// read size
-		memcpy(&received_relay_message.message_size, cntptr, sizeof(received_relay_message.message_size));
-		cntptr += sizeof(received_relay_message.message_size);
-		printf("Received message size %d\n", received_relay_message.message_size);
-		
-		/// read id (1)
-		/// #1:  id  - uint8_t
-		received_relay_message.relay_id = uint8_t(cntptr[0]);
-		cntptr += sizeof(received_relay_message.relay_id);
-		//DEBUGCOMM("Read id %d from msg\n", received_relay_message.relay_id);
-				
-		///read pos (2)
-		memcpy(&received_relay_message.relay_current_x, cntptr, sizeof(received_relay_message.relay_current_x));
-		cntptr = cntptr + sizeof(received_relay_message.relay_current_x);
-
-		memcpy(&received_relay_message.relay_current_y, cntptr, sizeof(received_relay_message.relay_current_y));
-		cntptr = cntptr + sizeof(received_relay_message.relay_current_y);
-
-
-		/// message sent time - uint64
-		memcpy(&received_relay_message.time_message_sent, cntptr, sizeof(received_relay_message.time_message_sent));
-		cntptr = cntptr + sizeof(received_relay_message.time_message_sent);
-
-		// neighbours- uint8_t
-		received_relay_message.number_neighbors = cntptr[0];
-		cntptr = cntptr + sizeof(received_relay_message.number_neighbors);
-
-		received_relay_message.target_basestation = cntptr[0];
-		cntptr = cntptr + sizeof(received_relay_message.target_basestation);
-
-		memcpy(&received_relay_message.last_served_time,cntptr, sizeof(received_relay_message.last_served_time));
-		cntptr = cntptr + sizeof(received_relay_message.last_served_time);
-
-		received_relay_message.last_served_basestation = (uint8_t)cntptr[0];
-		cntptr = cntptr + sizeof(received_relay_message.last_served_basestation);
-  	}
-}
-
-size_t
-FootbotRelay::get_data_from_missionagents(char *msg_ptr)
+float checkDistance(double c_x,double c_y,double t_x,double t_y)
 {
-    DEBUGCOMM("Creating message to request data from agent\n");
-    long unsigned int initial_address =  (long unsigned int)&(*msg_ptr);
+  return (sqrt(pow((t_x-c_x),2)+sqrt(pow((t_y-c_y),2))));
+}
 
-	char identifier = 'd';
-	memcpy(msg_ptr,&identifier,sizeof(identifier));
-	msg_ptr += sizeof(identifier);
+/*CVector3 
+FootbotRelay::getSpiralTargetPos(double x, double y)
+{   
+    // Sending Hello message to Agent
+  if(not stateData.possibleDirections[stateData.sequence])
+  { 
+    if(stateData.sequence % 2 ==0)
+    {
+      x = stateData.lastPossiblePosition[stateData.sequence]; // 0,2 -> along x direction
+    }
+    else
+    {
+      y = stateData.lastPossiblePosition[stateData.sequence];
+    }
+  }
+  else
+  {
+	 switch(stateData.sequence) 
+	 {
+      case SStateData::ALONG_POSX: {
+      	if((x+stateData.spiral_count) < size_x)
+      	{ 
+          printf("In pox x \n");
+       		x = x+stateData.spiral_count; // 1.0 -> range of mission agents
+          printf("+ x %f\n", x );
+      	}
+        else
+        {
+          stateData.possibleDirections[stateData.sequence] = false;
+        }
+       	stateData.sequence+=1;
+        break;
+      }
+      case SStateData::ALONG_POSY: {
+        if((y+stateData.spiral_count) < size_y)
+        { 
+          printf("In pox y \n");
+       		y = y+stateData.spiral_count; // 1.0 -> range of mission agents
+          printf("+ Y %f\n", y );
+        }
+        else
+        {
+          stateData.possibleDirections[stateData.sequence] = false;
+        }
+       	stateData.sequence+=1;
+        break;
+      }
+      case SStateData::ALONG_NEGX: {
+      	if((x-stateData.spiral_count) > -size_x) 
+      	{ 
+          printf("In neg x \n");
+       		x = x-stateData.spiral_count; // 1.0 -> range of mission agents
+          printf("- x %f\n", x );
+      	}
+        else
+        {
+          stateData.possibleDirections[stateData.sequence] = false;
+        }
+       	stateData.sequence+=1;
+        break;
+      }
+      case SStateData::ALONG_NEGY: {
+        if((y-stateData.spiral_count) > -size_y) 
+        { 
+          printf("In neg y \n");
+       		y = y-stateData.spiral_count; // 1.0 -> range of mission agents
+          printf("- Y %f\n", y );
+        }
+        else
+        {
+          stateData.possibleDirections[stateData.sequence] = false;
+        }
+       	stateData.sequence = 0;
+        break;
+      }
+      default: {
+         LOGERR << "We can't be here, there's a bug!" << std::endl;
+      }
 
-	uint8_t id_relay = m_myID;
-	memcpy(msg_ptr,&id_relay,sizeof(id_relay));
-	msg_ptr+= sizeof(id_relay);
+    }
+  }
+    if(stateData.sequence%2 == 0)
+    {
+        stateData.spiral_count += (1.0); // considering 1 metre as agent range else (spiral count new = spiral count old + agent range * spiral count old) 
+    }
+    CVector3 temp(x,y,0); 
+
+    return temp;
+} */
+
+size_t 
+FootbotRelay::HelloToAgent(char* out_to_agent)
+{  
+	/*** This message is sent to detect agent in range ***/
+
+	long unsigned int initial_address =  (long unsigned int)&(*out_to_agent);
+  
+   	/// identifier - 0 relay to agent hello message 
+    uint8_t identifier = 0; 
+    DEBUGCOMM("Size of character %d\n", sizeof(identifier));
+    memcpy(out_to_agent,&identifier,sizeof(identifier));
+    out_to_agent = out_to_agent + sizeof(identifier);
     
-	long unsigned int final_address =  (long unsigned int)&(*msg_ptr);
-
+    uint8_t id = (uint8_t)m_myID;
+    memcpy(out_to_agent,&id,sizeof(id));
+    out_to_agent = out_to_agent + sizeof(id);
+    
+    long unsigned int final_address = (long unsigned int)&(*out_to_agent);
     return size_t(final_address-initial_address);
 	
 }
 
-size_t
-FootbotRelay::send_collected_data(char* data_to_basestation_ptr)
+size_t 
+FootbotRelay::AcceptanceToAgent(char* out_to_agent)
 {
+	/*** This message is sent as acceptance to collect data from agent in range ***/
+	DEBUGCOMM("Creating message to request data from agent\n");
+    long unsigned int initial_address =  (long unsigned int)&(*out_to_agent);
 
-long unsigned int initial_address =  (long unsigned int)&(*data_to_basestation_ptr);
+	uint8_t identifier = 1;
+	memcpy(out_to_agent,&identifier,sizeof(identifier));
+	out_to_agent += sizeof(identifier);
 
-char identifier = 'x';
-memcpy(data_to_basestation_ptr, &identifier, sizeof(identifier));
-data_to_basestation_ptr = data_to_basestation_ptr + sizeof(identifier);
-DEBUGCOMM("Identifier data to base station %c\n", identifier);
-
-memcpy(data_to_basestation_ptr, &data_to_BS_size, sizeof(data_to_BS_size));
-data_to_basestation_ptr = data_to_basestation_ptr + sizeof(data_to_BS_size);
-
-uint8_t relay_id = m_myID;
-memcpy(data_to_basestation_ptr, &relay_id, sizeof(relay_id));
-data_to_basestation_ptr = data_to_basestation_ptr + sizeof(relay_id);
-DEBUGCOMM("Relay Id %d\n", relay_id);
-
-uint8_t map_size = data_from_agents.size();
-memcpy(data_to_basestation_ptr, &map_size, sizeof(map_size));
-data_to_basestation_ptr = data_to_basestation_ptr + sizeof(map_size);
-DEBUGCOMM("Number of agents %d\n", map_size);
-
-for (std::map<uint8_t,vector<Agent_data_info> >::iterator it=data_from_agents.begin(); it!=data_from_agents.end(); ++it)
-{
-	uint8_t id = it->first;
-	memcpy(data_to_basestation_ptr, &id, sizeof(id));
-	data_to_basestation_ptr = data_to_basestation_ptr + sizeof(id);
-	DEBUGCOMM("Agent Id %d\n", id);
-
-	vector<Agent_data_info> &temp_info = it->second;
+	uint8_t id_relay = m_myID;
+	memcpy(out_to_agent,&id_relay,sizeof(id_relay));
+	out_to_agent+= sizeof(id_relay);
     
-    uint8_t vec_size = temp_info.size();
-	memcpy(data_to_basestation_ptr, &vec_size, sizeof(vec_size));
-	data_to_basestation_ptr = data_to_basestation_ptr + sizeof(vec_size);
-	DEBUGCOMM("Number of times data exchanged with the same agent %d\n", vec_size);
+	long unsigned int final_address =  (long unsigned int)&(*out_to_agent);
 
-	for(int i=0; i < vec_size; i++)
-	{
-		memcpy(data_to_basestation_ptr, &temp_info[i].time_data_sent, sizeof(temp_info[i].time_data_sent));
-		data_to_basestation_ptr = data_to_basestation_ptr + sizeof(temp_info[i].time_data_sent);
-		DEBUGCOMM("Time step data exchanged %d\n", temp_info[i].time_data_sent);
+    return size_t(final_address-initial_address);
 
-		memcpy(data_to_basestation_ptr, &temp_info[i].data_size, sizeof(temp_info[i].data_size));
-		data_to_basestation_ptr = data_to_basestation_ptr + sizeof(temp_info[i].data_size);
-		DEBUGCOMM("size of data exchanged %d\n", temp_info[i].data_size);
-
-		//memcpy(data_to_basestation_ptr, temp_info[i].fake_data.data(), sizeof(uint8_t)*(temp_info[i].fake_data.size()));
-		//data_to_basestation_ptr = data_to_basestation_ptr + sizeof(uint8_t)*(temp_info[i].fake_data.size());
-	}
-}
-
-long unsigned int final_address =  (long unsigned int)&(*data_to_basestation_ptr);
-data_to_BS_size = uint32_t(final_address - initial_address);
-cout << "data size " << data_to_BS_size << endl; 
-DEBUGCOMM("total message size %d\n", data_to_BS_size);
-return size_t(data_to_BS_size);
 }
 
 
 void 
+FootbotRelay::ParseAgentProfile(vector<char> &incoming_agent_message)
+{
+  	char* agent_mes_ptr = (char*)&incoming_agent_message[0];
+  	
+  	
+
+  	DEBUGCOMM("parsing agent message\n");
+  
+  	uint8_t mes_type = (uint8_t)agent_mes_ptr[0];
+  	agent_mes_ptr = agent_mes_ptr + sizeof(mes_type);
+
+    //neighbour_count = neighbour_count + 1;
+    
+	DEBUGCOMM("profile message from agent\n");
+  	
+  	// Agent id
+  	agentData.id = (uint8_t)agent_mes_ptr[0];
+  	agent_mes_ptr = agent_mes_ptr + sizeof(agentData.id);
+  	DEBUGCOMM("agent id %d\n",agentData.id);
+    
+    // Time when message is sent
+   
+    memcpy(&agentData.time_last_visited, agent_mes_ptr, sizeof(agentData.time_last_visited));
+    DEBUGCOMM("time sent %u\n",agentData.time_last_visited);
+    agent_mes_ptr+=sizeof(agentData.time_last_visited);
+
+    // Agent pos
+    memcpy(&agentData.current_location.x, agent_mes_ptr, sizeof(agentData.current_location.x));
+    agent_mes_ptr+= sizeof(agentData.current_location.x);
+
+    memcpy(&agentData.current_location.y, agent_mes_ptr, sizeof(agentData.current_location.y));
+    agent_mes_ptr+= sizeof(agentData.current_location.y);
+    
+    DEBUGCOMM("Agent Position %f %f \n", agentData.current_location.x, agentData.current_location.y);
+
+
+    // last time when hte data is transmitted
+    memcpy(&agentData.time_last_data_collected,agent_mes_ptr,sizeof(agentData.time_last_data_collected));
+    agent_mes_ptr+= sizeof(agentData.time_last_data_collected);
+    DEBUGCOMM("LAST DATA transmitted %u\n",agentData.time_last_data_collected);
+
+    // number of neighbours
+   /* agent_message.number_neighbors = (uint8_t)agent_mes_ptr[0];
+    agent_mes_ptr = agent_mes_ptr+ sizeof(agent_message.number_neighbors);
+    //DEBUGCOMM("number of neighbours for agent %d\n",agent_message.number_neighbors);
+  
+	 //timestep
+    memcpy(&agent_message.timestep, agent_mes_ptr, sizeof(agent_message.timestep));
+    agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.timestep);
+    //DEBUGCOMM("timestep %d\n", agent_message.timestep);
+     */
+    // future position
+    agentData.goal_location.x = 0.0;
+    agentData.goal_location.y = 0.0;
+
+    memcpy(&agentData.goal_location.x, agent_mes_ptr, sizeof(agentData.goal_location.x));
+    agent_mes_ptr = agent_mes_ptr + sizeof(agentData.goal_location.x);
+    DEBUGCOMM("target X %f\n", agentData.goal_location.x);
+
+    memcpy(&agentData.goal_location.y, agent_mes_ptr, sizeof(agentData.goal_location.y));
+    agent_mes_ptr = agent_mes_ptr + sizeof(agentData.goal_location.y);
+    DEBUGCOMM("target Y %f\n", agentData.goal_location.y);
+    agentData.IsGoalSet = true;
+
+    // amount of data available from the agent
+    memcpy(&agentData.data_available, agent_mes_ptr, sizeof(agentData.data_available));
+    agent_mes_ptr = agent_mes_ptr + sizeof(agentData.data_available);
+    DEBUGCOMM("Amount of data available %lu\n", agentData.data_available);
+    
+    uint32_t message_size;
+  	memcpy(&message_size, agent_mes_ptr, sizeof(message_size));
+    agent_mes_ptr = agent_mes_ptr+sizeof(message_size);
+    DEBUGCOMM("message_size %d\n",message_size);
+
+    stateData.IsAgentDetected = true;
+    DEBUGCOMM("done parsing agent message\n");
+}
+
+void 
+FootbotRelay::ParseAgentCollectedData(vector<char> &incoming_agent_message)
+{   
+	char* agent_mes_ptr = (char*)&incoming_agent_message[0];
+    
+    uint8_t mes_type = (uint8_t)agent_mes_ptr[0];
+  	agent_mes_ptr = agent_mes_ptr + sizeof(mes_type);
+
+	  uint8_t temp_id;
+    memcpy(&temp_id,agent_mes_ptr,sizeof(temp_id));
+    agent_mes_ptr = agent_mes_ptr + sizeof(temp_id);
+
+    memcpy(&agentData.transmitted_data_time, agent_mes_ptr, sizeof(agentData.transmitted_data_time));
+    agent_mes_ptr = agent_mes_ptr + sizeof(agentData.transmitted_data_time);
+
+	//neighbour_count = neighbour_count + 1;
+  	DEBUGCOMM("Received data from agents\n");
+      /// Receiving and storing data
+  	 
+  	memcpy(&agentData.transmitted_data_size,agent_mes_ptr,sizeof(agentData.transmitted_data_size));
+  	agent_mes_ptr = agent_mes_ptr + sizeof(agentData.transmitted_data_size);
+  	
+  	DEBUGCOMM("Relay knows the size of data: %d sent \n",(agentData.transmitted_data_size));
+}
+
+void 
+FootbotRelay::ParseMessage(vector<char> &incoming_agent_message, uint8_t received_data_id)
+{
+	switch(received_data_id) {
+      case SStateData::AGENT_PROFILE_DATA: {
+         ParseAgentProfile(incoming_agent_message);
+         break;
+      }
+      case SStateData::AGENT_COLLECTED_DATA: {
+         ParseAgentCollectedData(incoming_agent_message); // explore is not necessary for one-one-one case
+         break;
+      }
+      /* case SStateData::RELAY_PROFILE_DATA: {
+         ParseRelayProfile(); // Check argos2-footbot to decide when the relay should communicate
+         break;
+      } */
+     
+      default: {
+         LOGERR << "We can't be here, there's a bug!" << std::endl;
+      }
+	}	
+}
+
+void
+FootbotRelay::SendData(uint8_t send_data_id, uint8_t id)
+{
+	switch(send_data_id) {
+      
+      case SStateData::RELAY_HELLO_TO_AGENT: {
+         
+         char agent_socket_msg[20];
+       	 size_t mes_size =  HelloToAgent(agent_socket_msg);
+         m_pcWifiActuator->SendBinaryMessageTo_Extern("-1",agent_socket_msg,mes_size);
+         break;
+      }
+      
+      case SStateData::RELAY_SENDING_ACCEPTANCE_TO_AGENT: {
+         
+         char agent_data_msg[20];
+         size_t mes_size = AcceptanceToAgent(agent_data_msg); 
+
+         std::ostringstream str_tmp(ostringstream::out);
+		     str_tmp << "fb_" << id;
+		     string str_Dest = str_tmp.str();
+		     m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),agent_data_msg,mes_size);
+
+         break;
+      }
+      case SStateData::RELAY_TO_BASESTATION: {
+         //ToBaseStation(); 
+         break;
+      }
+      /*case SStateData::RELAY_TO_RELAY: {
+         Return(); 
+         break;
+      }*/
+      default: {
+         LOGERR << "We can't be here, there's a bug!" << std::endl;
+      }
+	}
+}
+
+void
+FootbotRelay::UpdateState()
+{	
+	DEBUGCOMM("In relay state %d\n", stateData.SentData);
+	if(m_Steps%10 == 0)
+	{   
+		stateData.SentData = SStateData::RELAY_HELLO_TO_AGENT;
+		SendData(stateData.SentData, 0);
+	}
+
+	/*if(search_time >= stateData.time_for_each_agent)
+	{   
+		DEBUGCOMM("time_for_each_agent exceeded \n");
+		m_navClient->stop();
+	}*/
+
+	if(stateData.IsAgentDetected)
+	{ 
+    DEBUGCOMM("Agent Detected \n");
+		stateData.State = SStateData::STATE_DATA_GATHERING;
+		//spiralData->sequence = 0;
+		search_time = 0;
+		stateData.SearchState = SStateData::To_AGENT;
+	}
+}
+
+void 
 FootbotRelay::ControlStep() 
 {   
-	bool send_message_to_basestation = false;
-	send_message_to_relay = false;
-    if(m_Steps % 5 == 0 && m_Steps > 2)
-		/*** Saving the waypoints ***/
-		data_file << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
-    
-    vector<double> tempBasePos;
-    bool pass=true;
-	neighbour_count = 0;
+	m_Steps+=1;
+  if(m_Steps % 5 == 0)
+  {
+    relayPositions.data_file << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
+  }
+	UpdateState();
 
-	/***** Assigning target Position  *****/
-   
-
-
-    if(send_message_to_basestation)
-    {   
-    	//cout << "[" << m_myID << "]" << "Before sending data to base station " << endl; 
-    	send_message_to_relay = true;
-		meeting_data_file <<"," << m_Steps << "\n";
-		//agents.clear();
-		//data_exchange_agents.clear();
-		//changePos = true;
-		visited_agents.clear();
-        
-        if(data_from_agents.size() > 0)
-        {
-			// sending collected data to Base Station
-			char base_socket_msg[MAX_UDP_SOCKET_BUFFER_SIZE*2];
-			size_t collected_data_size = send_collected_data(base_socket_msg); 
-			
-			std::ostringstream str_tmp(ostringstream::out);
-	  		str_tmp << "fb_" << relay_message.target_basestation;
-	  		string str_Dest = str_tmp.str();
-
-	  		cout << "Base Station Target " << str_Dest << endl;
-			m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),base_socket_msg,collected_data_size);
-			data_from_agents.clear();
-
-			
-		}
-		send_message_to_basestation = false;
-    }
+    DEBUGCOMM("Position %f %f\n", m_navClient->currentPosition().GetX(), m_navClient->currentPosition().GetY());
 	
+	switch(stateData.State) {
+      case SStateData::STATE_SEARCH: {
+         Search();
+         break;
+      }
+      case SStateData::STATE_EXPLORE: {
+         //Explore(); // explore is not necessary for one-one-one case
+         break;
+      }
+      case SStateData::STATE_DATA_GATHERING: {
+         DataGather(); // Check argos2-footbot to decide when the relay should communicate
+         break;
+      }
+      case SStateData::STATE_RETURN_TO_BASESTATION: {
+         //Return(); // Once Reached BS send collected data
+         break;
+      }
+      default: {
+         LOGERR << "We can't be here, there's a bug!" << std::endl;
+      }
+   }
 
-    /********  Send and Receive messages to and from mission agents ********/
+    /********  Receive messages to and from mission agents ********/
 	
-
-
-	if(m_Steps % 10 == 0)
-	{   
-		char agent_socket_msg[20];
-		size_t mes_size = createMessageToMissionAgents(agent_socket_msg);
-		m_pcWifiActuator->SendBinaryMessageTo_Extern("-1",agent_socket_msg,mes_size);
-
-		/*char *p = agent_socket_msg;
-		for(int i=0;i < 2; i++)
-		{
-			printf("Sending message to agent %x\n",*p++);
-		}*/
-	}	
-
-   
-	TMessageList message_from_agents;
+   	TMessageList message_from_agents;
 	m_pcWifiSensor->GetReceivedMessages_Extern(message_from_agents);
 	for(TMessageList::iterator it = message_from_agents.begin(); it!=message_from_agents.end();it++)
 	{   
-		send_message_to_relay = true;
+		//send_message_to_relay = true;
 		DEBUGCOMM("Received %lu bytes to incoming buffer\n", it->Payload.size());
 
 		vector<char> check_message = it->Payload;
 		DEBUGCOMM("Identifier of received message [extern] %c\n",char(check_message[0]));
-		parse_agent_message(it->Payload);
+		ParseMessage(it->Payload, uint8_t(check_message[0]));
 		string sender = it->Sender;
-		if((char)check_message[0] == 'a')
+		/*if((char)check_message[0] == 'a')
 		{   
 			//agents.push_back(atoi((it->Sender).c_str));
 			meeting_data_file << sender << " ";
@@ -658,76 +605,108 @@ FootbotRelay::ControlStep()
 			meeting_data_file << "d_"+(sender) << " ";
 			//data_exchange_agents.push_back(atoi((it->Sender).c_str));
 			received_message_file << m_Steps << "," << check_message[0] << "," << sender << "," << (m_navClient->currentPosition().GetX()) << "," << (m_navClient->currentPosition().GetY()) << "\n";
-		}
-	} 
-
-	
-	
-		for(size_t i=0;i<agent_ids.size();i++)
-	{   
-		uint8_t agent_id = agent_ids.front();
-		
-		if (std::find(visited_agents.begin(), visited_agents.end(),agent_id)==visited_agents.end())
-		    {
-		    	visited_agents.push_back(agent_id);
-				char data_request_message[MAX_UDP_SOCKET_BUFFER_SIZE];
-				size_t mes_size = get_data_from_missionagents(data_request_message);
-		        
-		        std::ostringstream str_tmp(ostringstream::out);
-		  		str_tmp << "fb_" << agent_id;
-		  		string str_Dest = str_tmp.str();
-
-		      	m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),data_request_message,mes_size);
-			}
-		agent_ids.pop();
-		check_set.erase(agent_id);
-	}
-
-
-     /// Sending messages to other Relays
-	if(send_message_to_relay)
-	{
-	  /// This profile message is sent to other relay robots using long communication range 
-		char m_relaySocketMsg[MAX_UDP_SOCKET_BUFFER_SIZE];
-		size_t psize = createProfileMessage(m_relaySocketMsg);
-		DEBUGCOMM("Sending MSG of size %lu\n",psize); 
-		
-		//char *p = m_relaySocketMsg;
-		/*for(int i=0;i < 41; i++)
-		{
-			printf("Sending %x\n",*p++);
-		}*/
-		
-		m_pcWifiActuator->SendBinaryMessageTo_Local("-1",m_relaySocketMsg,psize); 
-		
-		send_message_to_relay = false;
-		//char data[9]={2,3,4,5,6,7,8,0,2};
-		//m_pcWifiActuator->SendBinaryMessageTo("-1",data,9); 
-	}
-	
-	TMessageList t_incomingMsgs;
-    /// Receives Relay messages
-	m_pcWifiSensor->GetReceivedMessages_Local(t_incomingMsgs);
-	for(TMessageList::iterator it = t_incomingMsgs.begin(); it!=t_incomingMsgs.end();it++)
-	{
-		/// parse msg
-		DEBUGCOMM("Received %lu bytes to incoming buffer\n", it->Payload.size());
-		vector<char> check_message = it->Payload;
-		DEBUGCOMM("Identifier of received message [local] %c\n",char(check_message[0]));
-		if((char)check_message[0] == 'r')
-			parse_relay_message(it->Payload);
-		
-	} 
-
-
+		} */
+    }
 
 	m_pcLEDs->SetAllColors(CColor::MAGENTA);
 	m_navClient->setTime(getTime());
-	//m_navClient->update();
+	m_navClient->update();
+	
 	//cout <<"MyId: " << m_myID << "target: " << counter << endl;
-	m_Steps+=1;
+	
 }
 
+void
+FootbotRelay::DataGather()
+{
+	//send the acceptance to collect data after checking the available data size.
+	// move towards agent's current location Potential field -- agent should attract until it sends data and once data is sent agent should repel
+	stateData.SentData = SStateData::RELAY_SENDING_ACCEPTANCE_TO_AGENT;
+	SendData(stateData.SentData, agentData.id);
+	DEBUGCOMM("Received gathered data \n");
+  stateData.IsAgentDetected = false;
+	stateData.State = SStateData::STATE_SEARCH;
+}
+
+void
+FootbotRelay::Search()
+{ 
+  search_time ++;
+  DEBUGCOMM("Searching in mode %d \n", stateData.SearchState);
+  
+  if(stateData.IsGoalSet)
+  {
+  if(m_navClient->state() == target_state)
+	  { 
+      DEBUGCOMM("Reached target %f, %f", m_navClient->currentPosition().GetX(), m_navClient->currentPosition().GetY());
+	  	if(stateData.SearchState == SStateData::To_AGENT)
+	  	{
+	  		stateData.SearchState = SStateData::SPIRAL;
+
+        spiralData = spiral.calculatePositions(m_navClient->currentPosition().GetX(), m_navClient->currentPosition().GetY());
+        printf("condition %d\n", spiralData->spiralCondition);
+        for(int i =0 ;i< 4 ; i++)
+        {
+          printf("direction : %s\n",spiralData->possibleDirections[i]);
+        }
+	  	}
+	    stateData.IsGoalSet = false;
+	  }
+  }
+  else 
+  {
+    if(stateData.SearchState == SStateData::To_AGENT)
+	  { 
+      
+			if(not agentData.IsGoalSet)
+			{ 
+        DEBUGCOMM("agent current_location %f  %f \n", agentData.current_location.x,agentData.current_location.y);
+				CVector3 targetPos(agentData.current_location.x,agentData.current_location.y,0.0);
+				m_navClient->setTargetPosition(targetPos);
+				startPos.x = targetPos[0];
+        startPos.y = targetPos[1];
+			}
+			else if(agentData.IsGoalSet)
+			{
+        DEBUGCOMM("agent goal_location %f  %f \n", agentData.goal_location.x,agentData.goal_location.y);
+				CVector3 targetPos(agentData.goal_location.x,agentData.goal_location.y,0.0);
+				m_navClient->setTargetPosition(targetPos);
+				agentData.IsGoalSet = false;
+        startPos.x = targetPos[0];
+        startPos.y = targetPos[1];
+			}
+
+      
+      stateData.IsGoalSet = true;
+	  }
+	  else if(stateData.SearchState == SStateData::SPIRAL)
+	  {   
+        spiralData->spiralPos.x = m_navClient->currentPosition().GetX();
+        spiralData->spiralPos.y = m_navClient->currentPosition().GetY();
+
+        if(not spiralData->endCondition)
+        { 
+          printf("position when cond false %f %f \n", spiralData->spiralPos.x,spiralData->spiralPos.y);
+          spiralData = spiral.assignQuadrant(spiralData);
+          printf("Assigned Position %f %f \n", spiralData->spiralPos.x, spiralData->spiralPos.y);
+          spiralData = spiral.calculatePositions(spiralData->spiralPos.x,spiralData->spiralPos.y);
+          printf("Sequence: %d  Increment: %f spiralCondition: %d \n", spiralData->sequence, spiralData->spiral_count, spiralData->spiralCondition);
+          spiralData->endCondition = true;
+        }
+        else
+        {
+          spiralData->spiralPos.x = m_navClient->currentPosition().GetX();
+      	  spiralData->spiralPos.y = m_navClient->currentPosition().GetY();
+          spiralData = spiral.getPosition(spiralData);
+        }
+        
+        CVector3 targetPos(spiralData->spiralPos.x,spiralData->spiralPos.y,0.0);
+        DEBUGCOMM("Pos by spiral %f %f \n", targetPos[0], targetPos[1]);
+        m_navClient->setTargetPosition(targetPos);
+        stateData.IsGoalSet = true;
+	  }
+  }
+}
 
 	void 
 FootbotRelay::Destroy() 

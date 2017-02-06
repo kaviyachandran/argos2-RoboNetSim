@@ -1,0 +1,27 @@
+When there are more number of agents, goal positions can be distinguished by id. store in map with id -> key, struct-> valuev
+
+To DO:
+
+change randomwaypoint -> mission agent (size add it to xml)
+
+In relay controller restrict the spiral motion to a certain time limit.-> Total time for a run / Number of agents assigned to a relay
+
+Draw sequence diagram, state  transition diagram
+
+Collect data and plot
+
+
+time limit = 3*time taken to cover the diagonal
+
+time for each agent = [time limit - time taken to cover the diagonal(this is done to consider the time to go back to base station)]/					   No of agent
+
+ What if I make the relays only explore the environment. They will collect the data from agents when they meet on the way. I need to coordinate the relays so that they dont explore the same region as some other relay.
+
+
+ Idea :
+
+ Use Q-learning to learn a particular quadrant as important based on the number of agents it met in a quadrant
+
+ Limitation:
+
+ Disk model assumed is not accurate

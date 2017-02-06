@@ -1,9 +1,11 @@
 set(footbot_relay_HEADERS  
   footbot_relay.h
+  spiralPattern.h
   )
 
 set(footbot_relay_IMPLEMENTATIONS
   footbot_relay.cc
+  spiralPattern.cpp
   )
 
 find_package(Boost 1.54 REQUIRED COMPONENTS filesystem iostreams)

@@ -39,6 +39,19 @@ class FootbotMissionAgents: public CCI_Controller
 {
  
  public:
+    
+    struct Position
+    {
+        double x;
+        double y;
+    };
+
+    struct dataWrite
+    {
+      ofstream data_file;
+      string filename;
+    };
+    // Agent can send neighboring agent's pos and time met
 
     struct SStateData {
       /* possible states in which the controller can be */
@@ -47,11 +60,39 @@ class FootbotMissionAgents: public CCI_Controller
          STATE_EXPLORING
       } State;
 
+      enum ReceivedDataType {
+         RELAY_HELLO_MESSAGE = 0,
+         RELAY_ACCEPTANCE_FOR_DATA
+         //AGENT_DATA
+      } ReceivedData;
+
+      enum SentDataType {
+        PROFILE_DATA = 0,
+        COLLECTED_DATA
+        // AGENT_TO_AGENT
+      } SentData;
+
       SStateData();
 
       RobotNavState target_state;
       Real wait_time;
-      CVector3 goal_pos;
+      Position goal_loc;
+      Position current_loc;
+      uint8_t id;
+      //uint64_t size_of_data_available;
+      uint32_t ttl;
+      deque<uint8_t> data_generated;
+      vector<uint64_t> size_of_data_sent;
+      uint32_t discarded_data_count;
+      //uint8_t neighbor_number;
+      //map<uint8_t, Position> neighbor_details;
+    };
+
+    struct SRelayData{
+      uint8_t id;
+      uint64_t time_profile_data_sent;
+      uint64_t time_gathered_data_sent;
+      SRelayData();
     };
 
 
@@ -62,6 +103,7 @@ class FootbotMissionAgents: public CCI_Controller
     CARGoSRandom::CRNG* m_randomGen;
     UInt64 m_sendPackets;
     UInt8 m_myID;
+    float speed;
     RVONavClient *m_navClient;
 
     CCI_WiFiSensor* m_pcWifiSensor;
@@ -70,8 +112,11 @@ class FootbotMissionAgents: public CCI_Controller
     CCI_FootBotLedsActuator* m_pcLEDs;
     
     /* The controller state information */
-    SStateData statedata;
+    SStateData stateData;
+    SRelayData relayData;
+    map<uint8_t, SRelayData> relayMap;
 
+    
   public:
 
     /* Class constructor. */
@@ -86,15 +131,29 @@ class FootbotMissionAgents: public CCI_Controller
     virtual void ControlStep();
     virtual void Destroy();
     virtual bool IsControllerFinished() const;
-
+    
+    void updateState();
     void Rest();
     void Explore();
+
     CVector3 randomWaypoint();
 
     static std::string getTimeStr();
     UInt64 getTime();
+    uint32_t getTimeLimit(float,float);
     
-    
-};
+    void generateData();
 
+    void SendData(uint8_t type_of_message, uint8_t relay_id);
+    void ParseMessage(uint8_t id, std::vector<char> &v);
+
+    void ParseRelayMessage(vector<char> &incoming_agent_message);
+    void ParseRelayAcceptance(vector<char> &incoming_agent_message);
+    
+    dataWrite agentPositions;
+    dataWrite goalPositions;
+    // ParseNeighborData
+    size_t SendProfileData(char* ptr, uint8_t id, uint8_t relay_id);
+    size_t SendCollectedData(char* ptr, uint8_t id, uint8_t relay_id);
+};
 #endif
