@@ -71,7 +71,7 @@
 	     <rab min_particle_separation="0.4" particle_age="5.0" min_particle_confidence="0.1"/>
 	<!-- Min distance from the current position to the target position to determine it this is reached (meters)-->
   
-	     <targetMinPointDistance>0.1</targetMinPointDistance>
+	     <targetMinPointDistance>0.2</targetMinPointDistance>
 	<!-- Area bounds -->
   <!--
 	     <originAreaX>0.0</originAreaX>
@@ -80,10 +80,10 @@
 	     <destinationAreaY>6.5</destinationAreaY>
   -->
    
-       <originAreaX>-4.5</originAreaX>
-       <originAreaY>-4.5</originAreaY>
-       <destinationAreaX>4.5</destinationAreaX>
-       <destinationAreaY>4.5</destinationAreaY>
+       <originAreaX>-5.0</originAreaX>
+       <originAreaY>-5.0</originAreaY>
+       <destinationAreaX>5.0</destinationAreaX>
+       <destinationAreaY>5.0</destinationAreaY>
      </parameters>
 
    
@@ -110,10 +110,10 @@
 
         <led_debugging leds="true" beacon="true" beacon_intensity="10"/>
          <!-- Area bounds -->
-       <originAreaX>-4.5</originAreaX>
-       <originAreaY>-4.5</originAreaY>
-       <destinationAreaX>4.5</destinationAreaX>
-       <destinationAreaY>4.5</destinationAreaY>
+       <originAreaX>-5.0</originAreaX>
+       <originAreaY>-5.0</originAreaY>
+       <destinationAreaX>5.0</destinationAreaX>
+       <destinationAreaY>5.0</destinationAreaY>
 
       </parameters>
 
@@ -168,25 +168,25 @@
        <rab min_particle_separation="0.4" particle_age="5.0" min_particle_confidence="0.1"/>
   <!-- Min distance from the current position to the target position to determine it this is reached (meters)-->
   
-       <targetMinPointDistance>0.2</targetMinPointDistance>
+       <targetMinPointDistance>0.1</targetMinPointDistance>
   <!-- Area bounds -->
  
-       <originAreaX>-4.5</originAreaX>
-       <originAreaY>-4.5</originAreaY>
-       <destinationAreaX>4.5</destinationAreaX>
-       <destinationAreaY>4.5</destinationAreaY>
+       <originAreaX>-5.0</originAreaX>
+       <originAreaY>-5.0</originAreaY>
+       <destinationAreaX>5.0</destinationAreaX>
+       <destinationAreaY>5.0</destinationAreaY>
        <numberofrelay>1</numberofrelay>
        <numberofBS>1</numberofBS>
        <numberofAgent>1</numberofAgent>
        
        <state> 
-        <base_station1 x="-4.5" y="-4.5"/>
+        <base_station1 x="-4.3" y="-4.3"/>
        </state>
 
        
       <agent>
         
-        <agent1 x="-4.0" y="-2.0"/>
+        <agent1 x="2.0" y="-4.0"/>
       </agent>
 
      <!--   <BaseStation2 param="position" x= "9.0" y="-9.0"/>
@@ -272,7 +272,7 @@
 	    controller="fcentral" />
    
     <foot-bot id="fb_1"
-        position="-4.5,-4.5,0"
+        position="-4.3,-4.3,0"
         orientation="1,1,0"
         wifi_enabled="true"
         controller="fbase" />
@@ -282,18 +282,18 @@
         position="-2.0,-2.5,0"
         orientation="1,1,0"
         wifi_enabled="true"
-        controller="frelay" /
-
+        controller="frelay" /-->
     <foot-bot id="fb_2"
         position="-4.0,-2.0,0"
         orientation="1,1,0"
         wifi_enabled="true"
-        controller="fnav" /-->
+        controller="fnav" />
+
   
    <distribute>
-      <position method="uniform" min="-4.5,-4.5,0" max="4.5,4.5,0" />
+      <position method="uniform" min="-5.0,-5.0,0" max="5.0,5.0,0" />
       <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
-      <entity quantity="1" max_trials="100" base_num="2" >
+      <entity quantity="1" max_trials="100" base_num="3" >
       <foot-bot id="fb" controller="frelay" />
       </entity>
     </distribute> 
@@ -310,7 +310,7 @@
    <!--  
 	this is necessary for robonetsim
     -->
-    <wifi-medium id="wm" number_of_nodes="2"/>
+    <wifi-medium id="wm" number_of_nodes="3"/>
   </arena>
   <media>
     <led id="leds" />

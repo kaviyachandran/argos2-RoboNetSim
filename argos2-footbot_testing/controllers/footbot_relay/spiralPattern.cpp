@@ -9,10 +9,10 @@ SpiralPattern::SpiralPattern(){
   spiralMotion.initialise = true;
   //corner = 0;
  // environment coordinates
-  minimum.x = -4.5;
-  minimum.y = -4.5;
-  maximum.x = 4.5;
-  maximum.y = 4.5;
+  minimum.x = -4.50;
+  minimum.y = -4.50;
+  maximum.x = 4.50;
+  maximum.y = 4.50;
 
   threshold = 0.75; // agent communication range
   
@@ -101,14 +101,14 @@ SpiralPattern::calculatePositions(double x, double y)
     {
       spiralMotion.possibleDirections[2] = false;
     } 
-    if((spiralMotion.spiralPos.y+spiralMotion.spiral_count) > maximum.y && spiralMotion.possibleDirections[1])
-    {
-      spiralMotion.possibleDirections[1] = false;
-    }
-
-    if(spiralMotion.spiralPos.y-spiralMotion.spiral_count < minimum.y && spiralMotion.possibleDirections[3])
+    if((spiralMotion.spiralPos.y+spiralMotion.spiral_count) > maximum.y && spiralMotion.possibleDirections[3])
     {
       spiralMotion.possibleDirections[3] = false;
+    }
+
+    if(spiralMotion.spiralPos.y-spiralMotion.spiral_count < minimum.y && spiralMotion.possibleDirections[1])
+    {
+      spiralMotion.possibleDirections[1] = false;
     } 
 
     spiralMotion.spiralCondition = uint8_t(std::count(spiralMotion.possibleDirections.begin(), spiralMotion.possibleDirections.end(), 0));
@@ -196,8 +196,9 @@ SpiralPattern::getNormalSpiralPositions(uint8_t switchVal, float increment, Posi
 
 double 
 SpiralPattern::findDistance(Position* startVal, Position* endVal)
-{
-  return sqrt(pow(endVal->x-abs(startVal->x),2)+pow(endVal->y-abs(startVal->y),2));
+{ 
+  printf("Start: %f %f  End: %f %f\n", abs(startVal->x),abs(startVal->y), abs(endVal->x), abs(endVal->y));
+  return sqrt(pow(abs(endVal->x)-abs(startVal->x),2)+pow(abs(endVal->y)-abs(startVal->y),2));
 }
 
 bool
@@ -226,12 +227,17 @@ struct SpiralPattern::SpiralMotion*
 SpiralPattern::getPosition(SpiralMotion* spiralTemp)
 {     
    Position tempP =  spiralTemp->spiralPos;
-   vector<double> current_pos = {tempP.x,tempP.y};
+   vector<double> current_pos;
 
-    if(spiralTemp->counter % 4 == 0)
+   /* if(spiralTemp->counter % 4 == 0)
+    {
+      spiralTemp->counter = 0;
+    } */
+    
+    if(spiralTemp->sequence %4 == 0)
     {
       spiralTemp->sequence = 0;
-      spiralTemp->counter = 0;
+      spiralTemp->limitedDirection.assign(4,true);
     }
 
     if(spiralTemp->spiralCondition == 0)
@@ -239,33 +245,48 @@ SpiralPattern::getPosition(SpiralMotion* spiralTemp)
       if(spiralTemp->initialise)
       {
         cout << "I am here: spiralCount" << spiralTemp->spiral_count << "spiralMotion.sequence " << spiralTemp->sequence << endl;
-        spiralTemp->clockwise = true;
+        //spiralTemp->clockwise = true;
         //counter = 0;
         spiralTemp->spiral_count = threshold;
         spiralTemp->sequence = 0;
         spiralTemp->initialise = false;
         spiralTemp->counter = 0;
       }
+
+
+    current_pos = getNormalSpiralPositions(spiralTemp->sequence, spiralTemp->spiral_count,&tempP);
+    
+    //spiralTemp->counter = spiralTemp->counter + 1;
+    
+    if(spiralTemp->sequence%2 == 0)
+    {
+      spiralTemp->spiral_count = spiralTemp->spiral_count + threshold;
     }
+
+   }
     else if(spiralTemp->spiralCondition == 1 || spiralTemp->spiralCondition == 2)
     { 
-      if(spiralTemp->initialise)
+      /*if(spiralTemp->initialise)
       {
-        ptrdiff_t zeroPos = spiralTemp->possibleDirections.begin()-
-        std::find(spiralTemp->possibleDirections.begin(), spiralTemp->possibleDirections.end(), 0); 
+        //ptrdiff_t zeroPos = std::find(spiralTemp->possibleDirections.begin(), spiralTemp->possibleDirections.end(), 0)
+        //-spiralTemp->possibleDirections.begin(); 
         
-        spiralTemp->sequence =  spiralData.rectSpiralSequenceRev[-1*spiralData.rectSpiralSequence[zeroPos]];
+        //printf("zero Pos: %d\n", zeroPos);
+   
+
+        //spiralTemp->sequence =  spiralData.rectSpiralSequenceRev[-1*spiralData.rectSpiralSequence[zeroPos]];
         
-        spiralTemp->clockwise = false;
+        //spiralTemp->clockwise = false;
         spiralTemp->initialise = false;
        
-        spiralTemp->spiral_count = abs(current_pos[std::abs(spiralData.rectSpiralSequence[spiralTemp->sequence])-1])-threshold;
+        //spiralTemp->spiral_count = abs(current_pos[std::abs(spiralData.rectSpiralSequence[spiralTemp->sequence])-1])-threshold;
         printf("spiral Count: %f\n",spiralTemp->spiral_count);
         spiralTemp->counter = 0;
-      }
-
+      }*/
+     current_pos = quadrant[quadrantFunc(spiralTemp->spiralPos.x,spiralTemp->spiralPos.y)];
+     spiralTemp->spiralCondition = 0;
     }
-    current_pos.clear();
+    /*current_pos.clear();
     current_pos = getNormalSpiralPositions(spiralTemp->sequence, spiralTemp->spiral_count,&tempP);
     spiralTemp->spiralPos.x = current_pos[0];
     spiralTemp->spiralPos.y = current_pos[1];
@@ -278,22 +299,28 @@ SpiralPattern::getPosition(SpiralMotion* spiralTemp)
       if(spiralTemp->clockwise)
       {
         spiralTemp->spiral_count = spiralTemp->spiral_count + threshold;
-        uint8_t limitedDirection_Num =uint8_t(std::count(spiralTemp->limitedDirection.begin(), spiralTemp->limitedDirection.end(), 0));  
-
-        if(limitedDirection_Num >= 2 || not checkCondition(spiralTemp->spiralCondition, spiralTemp->spiralPos)) // if an agetn cannot move in two directions
-        {
-          spiralTemp->endCondition =  false;
-        }
+       
       }
       else if(not spiralTemp->clockwise)
       {
         spiralTemp->spiral_count = spiralTemp->spiral_count - threshold;
-        spiralTemp->endCondition = checkCondition(spiralTemp->spiralCondition, spiralTemp->spiralPos);
+        
       }
+    }*/
 
-      
+    spiralTemp->spiralPos.x = current_pos[0];
+    spiralTemp->spiralPos.y = current_pos[1];
+    spiralTemp->sequence = spiralTemp->sequence + 1.0;
+
+    int limitedDirection_Num =int(std::count(spiralTemp->limitedDirection.begin(), spiralTemp->limitedDirection.end(), 0));  
+
+    printf("limited Direction: %d\n" ,limitedDirection_Num);
+    if(limitedDirection_Num >= 2 || not checkCondition(spiralTemp->spiralCondition, spiralTemp->spiralPos)) // if an agetn cannot move in two directions
+    {
+      spiralTemp->endCondition =  false;
     }
-  
+   
+   
   
   relayPositions.data_file << spiralTemp->spiralPos.x << "," << spiralTemp->spiralPos.y << "\n";
   return spiralTemp;

@@ -25,3 +25,15 @@ time for each agent = [time limit - time taken to cover the diagonal(this is don
  Limitation:
 
  Disk model assumed is not accurate
+
+
+ 06/02 -> When there are more than one base station make base station pos as map with number as key and pos -> value
+ 07/02 - State Machine:
+
+ 1-1-1 case:
+
+ Search state -> Data Gather ---- When an agent is detected
+ Data Gather -> Search State ----- If the agent's data size is zero
+
+ Data Gather -> Return ------- When data is gathered from agent
+ Return -> State Search ----- Once data is transferred to Base Station

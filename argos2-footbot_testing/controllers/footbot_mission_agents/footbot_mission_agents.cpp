@@ -13,8 +13,8 @@
 #define DEBUGCOMM(m, ...) \
 {\
   fprintf(stderr, "%.2f DEBUGCOMM[%d]: " m,\
-	  (float) m_Steps,\
-	  (int) m_myID, \
+    (float) m_Steps,\
+    (int) m_myID, \
           ## __VA_ARGS__);\
   fflush(stderr);\
 }
@@ -41,7 +41,7 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
   m_myID = 
     atoi(GetRobot().GetRobotId().substr(7).c_str());
 #endif
-  printf("MyID %d\n", m_myID);
+  DEBUGCOMM("MyID %d\n", m_myID);
  
   /// Random
   GetNodeAttributeOrDefault(t_node, "RandomSeed", RandomSeed, RandomSeed);
@@ -193,12 +193,16 @@ FootbotMissionAgents::ParseRelayAcceptance(std::vector<char> &m_incomingMsg)
   DEBUGCOMM("Received message from relay %d \n",relay_id); 
   
   // Relay can meet the same agent twice during one run
-  if(relayMap[relay_id].time_gathered_data_sent >= stateData.ttl/2)
+ /* if(relayMap[relay_id].time_gathered_data_sent >= stateData.ttl/2)
   {
     stateData.SentData = SStateData::COLLECTED_DATA;
     // response to relay
     SendData(stateData.SentData, relay_id);
-  }
+  } */
+  DEBUGCOMM("%d\n", relayMap[relay_id].time_gathered_data_sent);
+  stateData.SentData = SStateData::COLLECTED_DATA;
+    // response to relay
+  SendData(stateData.SentData, relay_id);
 }
 
 size_t 
@@ -216,7 +220,7 @@ FootbotMissionAgents::SendProfileData(char* mes_ptr, uint8_t type_of_message, ui
   
   memcpy(mes_ptr, &type_of_message, sizeof(type_of_message));
   mes_ptr += sizeof(type_of_message);
-  printf("%d %d \n",type_of_message,sizeof(type_of_message));
+  DEBUGCOMM("%d %d \n",type_of_message,sizeof(type_of_message));
   //profile_message.message_size = mes_size;
  
   /// put id (1)
@@ -225,14 +229,14 @@ FootbotMissionAgents::SendProfileData(char* mes_ptr, uint8_t type_of_message, ui
   /// copy to the buffer
   memcpy(mes_ptr, &stateData.id, sizeof(stateData.id));
   mes_ptr += sizeof(stateData.id);
-  printf("%d %d\n",stateData.id, sizeof(stateData.id));
+  DEBUGCOMM("%d %d\n",stateData.id, sizeof(stateData.id));
   
   /// put timestamp (8)
   /// #2: timestamp - uint64_t
   uint64_t time_message_sent = relayMap[relay_id].time_profile_data_sent;
   memcpy(mes_ptr, &time_message_sent, sizeof(time_message_sent));
   mes_ptr += sizeof(time_message_sent);
-  printf("%d %d\n",time_message_sent, sizeof(time_message_sent));
+  DEBUGCOMM("%d %d\n",time_message_sent, sizeof(time_message_sent));
  
   /// put position (x,y) (16)
   /// #3: x, y : double, double 
@@ -240,17 +244,17 @@ FootbotMissionAgents::SendProfileData(char* mes_ptr, uint8_t type_of_message, ui
   stateData.current_loc.y = (double) m_navClient->currentPosition().GetY();
   memcpy(mes_ptr,&stateData.current_loc.x, sizeof(stateData.current_loc.x));
   mes_ptr += sizeof(stateData.current_loc.x);
-  printf("%f %d\n",stateData.current_loc.x, sizeof(stateData.current_loc.x));
+  DEBUGCOMM("%f %d\n",stateData.current_loc.x, sizeof(stateData.current_loc.x));
 
   memcpy(mes_ptr,&stateData.current_loc.y, sizeof(stateData.current_loc.y));
   mes_ptr += sizeof(stateData.current_loc.y);
-  printf("%f %d\n", stateData.current_loc.y, sizeof(stateData.current_loc.y));
+  DEBUGCOMM("%f %d\n", stateData.current_loc.y, sizeof(stateData.current_loc.y));
   /// put timestamp (8)
   /// #4: timestamp - uint64_t
   uint64_t time_last_data_transmitted = relayMap[relay_id].time_gathered_data_sent;
   memcpy(mes_ptr, &time_last_data_transmitted, sizeof(time_last_data_transmitted));
   mes_ptr += sizeof(time_last_data_transmitted);
-  printf("%d %d\n",time_last_data_transmitted, sizeof(time_last_data_transmitted));
+  DEBUGCOMM("%d %d\n",time_last_data_transmitted, sizeof(time_last_data_transmitted));
   /*/// put numberofneighbors (1)
   /// #5: n_neighbors: uint8_t
   profile_message.number_neighbors = neighbour_agents_number;
@@ -267,17 +271,17 @@ FootbotMissionAgents::SendProfileData(char* mes_ptr, uint8_t type_of_message, ui
   
   memcpy(mes_ptr, &target_pos_x, sizeof(target_pos_x));
   mes_ptr = mes_ptr + sizeof(target_pos_x); 
-  printf("%f %d\n",target_pos_x, sizeof(target_pos_x));
+  DEBUGCOMM("%f %d\n",target_pos_x, sizeof(target_pos_x));
 
   memcpy(mes_ptr, &target_pos_y, sizeof(target_pos_y));
   mes_ptr = mes_ptr + sizeof(target_pos_y); 
-  printf("%f %d\n",target_pos_y, sizeof(target_pos_y));
+  DEBUGCOMM("%f %d\n",target_pos_y, sizeof(target_pos_y));
 
   ///#7: size of fake data generated (8)
   uint64_t data_available = sizeof(uint8_t)*stateData.data_generated.size();
   memcpy(mes_ptr, &data_available, sizeof(data_available));
   mes_ptr = mes_ptr + sizeof(data_available);
-  printf("%d %d\n", data_available, sizeof(data_available));
+  DEBUGCOMM("%d %d\n", data_available, sizeof(data_available));
 
   long unsigned int final_address = (long unsigned int)&(*mes_ptr);
   
@@ -288,7 +292,7 @@ FootbotMissionAgents::SendProfileData(char* mes_ptr, uint8_t type_of_message, ui
   memcpy(mes_ptr, &mes_size,sizeof(mes_size));
   mes_ptr = mes_ptr + sizeof(mes_size);
   mes_size = mes_size + sizeof(mes_size);
-  printf("%d %d\n",mes_size, sizeof(mes_size));
+  DEBUGCOMM("%d %d\n",mes_size, sizeof(mes_size));
   DEBUGCOMM("%d message_size \n", mes_size);
   
   
@@ -354,12 +358,12 @@ FootbotMissionAgents::SendData(uint8_t type_of_message, uint8_t relay_id)
       case SStateData::PROFILE_DATA: {
          
          psize = SendProfileData(relay_socket_msg,type_of_message,relay_id);
-         char *p = relay_socket_msg;
+         /*char *p = relay_socket_msg;
          
          for(int i=0;i < psize; i++)
         {
-          printf("Sending %x\n",*p++);
-        }
+          DEBUGCOMM("Sending %x\n",*p++);
+        }*/
         break;
       }
       case SStateData::COLLECTED_DATA: {
@@ -541,7 +545,7 @@ FootbotMissionAgents::getTimeStr()
   int milli = curTime.tv_usec / 1000;
   strftime(buffer, 80, "%Y-%m-%d %H:%M:%S", localtime(&curTime.tv_sec));
   char currentTime[84] = "";
-  sprintf(currentTime, "%s:%d", buffer, milli);
+  sDEBUGCOMM(currentTime, "%s:%d", buffer, milli);
   std::string ctime_str(currentTime);
   return ctime_str;
 #else

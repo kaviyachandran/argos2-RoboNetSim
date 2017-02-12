@@ -45,6 +45,8 @@ class FootbotRelay: public CCI_Controller
 {
 
  public:
+    
+    typedef SpiralPattern::Positiontype Position;
 
     struct dataWrite
     {
@@ -52,11 +54,11 @@ class FootbotRelay: public CCI_Controller
       string filename;
     };
 
-    struct Position
+    /*struct Position
     {
         double x;
         double y;
-    };
+    };*/
 
     struct SAgentData
     {
@@ -75,6 +77,7 @@ class FootbotRelay: public CCI_Controller
 
         bool IsGoalSet;
         bool IsAgentStatusAvailable;
+        bool IsDataReceived;
 
         uint8_t NUMBER_OF_AGENT;
 
@@ -109,14 +112,16 @@ class FootbotRelay: public CCI_Controller
       enum SentDataType {
         RELAY_HELLO_TO_AGENT = 0,
         RELAY_SENDING_ACCEPTANCE_TO_AGENT,
-	// RELAY_TO_RELAY
-        RELAY_TO_BASESTATION
-        
+	      RELAY_TO_BASESTATION
+        // RELAY_TO_RELAY
       } SentData;
 
       //Position base_station;
       uint8_t NUMBER_OF_BASESTATION;
-      vector<Position> base_station;
+      map<int,Position> base_station;
+      bool IsDataSentToBaseStation;
+      bool MovingToBaseStation;
+
       uint8_t NUMBER_OF_RELAY;
       
       bool IsGoalSet;
@@ -157,6 +162,10 @@ private:
     
     uint64_t search_time; 
     
+    bool initialiseReturnState;
+    bool initialiseDataGather;
+    bool initialiseSearchState;
+
     CARGoSRandom::CRNG* m_randomGen;
     //UInt64 m_sendPackets;
     Position startPos;
@@ -185,6 +194,8 @@ private:
     // object of class B
     SpiralPattern spiral;
     SpiralPattern::SpiralMotion* spiralData;
+
+
     uint8_t counter = 0;
     
 public:
@@ -217,14 +228,15 @@ public:
     void Return();
 
      /*** communication ***/
-    size_t HelloToAgent(char* out_to_agent);
-    size_t AcceptanceToAgent(char* out_to_agent);
-    size_t ToBaseStation();
+    size_t HelloToAgent(uint8_t id,char* out_to_agent);
+    size_t AcceptanceToAgent(uint8_t id,char* out_to_agent);
+    size_t ToBaseStation(uint8_t id,char* out_to_agent);
 
     void ParseAgentProfile(vector<char> &incoming_agent_message);
     void ParseAgentCollectedData(vector<char> &incoming_agent_message);
     
     dataWrite relayPositions;
+    dataWrite timeStepToMeet;
 };
 
 #endif

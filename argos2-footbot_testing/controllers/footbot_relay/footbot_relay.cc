@@ -42,7 +42,7 @@ FootbotRelay::SStateData::SStateData()
 	collected_data_size = 0;
 	State = SStateData::STATE_SEARCH;
 	SearchState = SStateData::To_AGENT;
-  IsAgentDetected = false;
+  MovingToBaseStation = false;
   
   
 	/****Calculate time limit and min data size ****/
@@ -60,6 +60,7 @@ FootbotRelay::SStateData::SStateData()
 FootbotRelay::SAgentData::SAgentData()
 {
 	IsGoalSet = false;
+  IsDataReceived = false;
 }
 
 void
@@ -77,7 +78,7 @@ FootbotRelay::SStateData::Init(TConfigurationNode& t_node)
 
 		GetNodeAttribute(GetNode(t_node, temp_str.str()), "x", loc.x);
 		GetNodeAttribute(GetNode(t_node, temp_str.str()), "y", loc.y);
-		base_station.push_back(loc);	
+		base_station.emplace(i+1,(loc));	
 		printf("Base Station position %f %f", loc.x, loc.y);
 	}
 
@@ -135,7 +136,7 @@ FootbotRelay::Init(TConfigurationNode& t_node)
 	GetNodeText(GetNode(t_node, "numberofBS"), temp);
 	stateData.NUMBER_OF_BASESTATION = atoi(temp.c_str());
 
-  DEBUGCOMM("Number of base_station: %d \n ", stateData.NUMBER_OF_BASESTATION);
+  printf("Number of base_station: %d \n ", stateData.NUMBER_OF_BASESTATION);
 	
   GetNodeText(GetNode(t_node, "numberofAgent"), temp);
 	agentData.NUMBER_OF_AGENT = atoi(temp.c_str());
@@ -181,18 +182,26 @@ FootbotRelay::Init(TConfigurationNode& t_node)
   //printf("Random num %d\n", m_randomGen->Uniform(CRange<UInt32>(1,50)));
   //agentData.time_last_visited = m_randomGen->Uniform(CRange<UInt32>(1,50));
 	
+  initialiseReturnState = true;
+  initialiseDataGather = true;
+  initialiseSearchState = true;
 
 	stateData.time_limit = 2*getTimeLimit(size_x,size_y);
   stateData.min_data_size = 0.4*stateData.time_limit*(agentData.NUMBER_OF_AGENT/stateData.NUMBER_OF_RELAY); // 40 % of data from each agent assigned to it
   stateData.time_for_each_agent = ((stateData.time_limit - (stateData.time_limit/2)) / agentData.NUMBER_OF_AGENT);
 
-  DEBUGCOMM("Initialising agent and base station positions \n");
+  printf("Initialising agent and base station positions \n");
 	/****Initialising Agent and Base Station positions ****/
 	stateData.Init(GetNode(t_node, "state"));
 	agentData.Init(GetNode(t_node, "agent"));
-
+  
+  // Records Positions of Agents
   relayPositions.filename = "position" + to_string(m_myID)+".csv";
   relayPositions.data_file.open(relayPositions.filename, ios::out | ios::ate);
+
+ // Records the time and position at which a relay meets the agent
+  timeStepToMeet.filename = "timestep"+ to_string(m_myID)+".csv";
+  timeStepToMeet.data_file.open(timeStepToMeet.filename, ios::out | ios::ate);
    
 }
 
@@ -212,111 +221,18 @@ FootbotRelay::getTimeLimit(float x, float y)
 	return temp_time;
 }
 
-float checkDistance(double c_x,double c_y,double t_x,double t_y)
-{
-  return (sqrt(pow((t_x-c_x),2)+sqrt(pow((t_y-c_y),2))));
-}
 
-/*CVector3 
-FootbotRelay::getSpiralTargetPos(double x, double y)
-{   
-    // Sending Hello message to Agent
-  if(not stateData.possibleDirections[stateData.sequence])
-  { 
-    if(stateData.sequence % 2 ==0)
-    {
-      x = stateData.lastPossiblePosition[stateData.sequence]; // 0,2 -> along x direction
-    }
-    else
-    {
-      y = stateData.lastPossiblePosition[stateData.sequence];
-    }
-  }
-  else
-  {
-	 switch(stateData.sequence) 
-	 {
-      case SStateData::ALONG_POSX: {
-      	if((x+stateData.spiral_count) < size_x)
-      	{ 
-          printf("In pox x \n");
-       		x = x+stateData.spiral_count; // 1.0 -> range of mission agents
-          printf("+ x %f\n", x );
-      	}
-        else
-        {
-          stateData.possibleDirections[stateData.sequence] = false;
-        }
-       	stateData.sequence+=1;
-        break;
-      }
-      case SStateData::ALONG_POSY: {
-        if((y+stateData.spiral_count) < size_y)
-        { 
-          printf("In pox y \n");
-       		y = y+stateData.spiral_count; // 1.0 -> range of mission agents
-          printf("+ Y %f\n", y );
-        }
-        else
-        {
-          stateData.possibleDirections[stateData.sequence] = false;
-        }
-       	stateData.sequence+=1;
-        break;
-      }
-      case SStateData::ALONG_NEGX: {
-      	if((x-stateData.spiral_count) > -size_x) 
-      	{ 
-          printf("In neg x \n");
-       		x = x-stateData.spiral_count; // 1.0 -> range of mission agents
-          printf("- x %f\n", x );
-      	}
-        else
-        {
-          stateData.possibleDirections[stateData.sequence] = false;
-        }
-       	stateData.sequence+=1;
-        break;
-      }
-      case SStateData::ALONG_NEGY: {
-        if((y-stateData.spiral_count) > -size_y) 
-        { 
-          printf("In neg y \n");
-       		y = y-stateData.spiral_count; // 1.0 -> range of mission agents
-          printf("- Y %f\n", y );
-        }
-        else
-        {
-          stateData.possibleDirections[stateData.sequence] = false;
-        }
-       	stateData.sequence = 0;
-        break;
-      }
-      default: {
-         LOGERR << "We can't be here, there's a bug!" << std::endl;
-      }
-
-    }
-  }
-    if(stateData.sequence%2 == 0)
-    {
-        stateData.spiral_count += (1.0); // considering 1 metre as agent range else (spiral count new = spiral count old + agent range * spiral count old) 
-    }
-    CVector3 temp(x,y,0); 
-
-    return temp;
-} */
 
 size_t 
-FootbotRelay::HelloToAgent(char* out_to_agent)
+FootbotRelay::HelloToAgent(uint8_t identifier, char* out_to_agent)
 {  
 	/*** This message is sent to detect agent in range ***/
 
 	long unsigned int initial_address =  (long unsigned int)&(*out_to_agent);
   
    	/// identifier - 0 relay to agent hello message 
-    uint8_t identifier = 0; 
-    DEBUGCOMM("Size of character %d\n", sizeof(identifier));
+    //uint8_t identifier = 0; 
+    printf("Size of character %d\n", sizeof(identifier));
     memcpy(out_to_agent,&identifier,sizeof(identifier));
     out_to_agent = out_to_agent + sizeof(identifier);
     
@@ -330,13 +246,13 @@ FootbotRelay::HelloToAgent(char* out_to_agent)
 }
 
 size_t 
-FootbotRelay::AcceptanceToAgent(char* out_to_agent)
+FootbotRelay::AcceptanceToAgent(uint8_t identifier,char* out_to_agent)
 {
 	/*** This message is sent as acceptance to collect data from agent in range ***/
-	DEBUGCOMM("Creating message to request data from agent\n");
-    long unsigned int initial_address =  (long unsigned int)&(*out_to_agent);
+	printf("Creating message to request data from agent\n");
+  long unsigned int initial_address =  (long unsigned int)&(*out_to_agent);
 
-	uint8_t identifier = 1;
+	//uint8_t identifier = 1;
 	memcpy(out_to_agent,&identifier,sizeof(identifier));
 	out_to_agent += sizeof(identifier);
 
@@ -346,36 +262,82 @@ FootbotRelay::AcceptanceToAgent(char* out_to_agent)
     
 	long unsigned int final_address =  (long unsigned int)&(*out_to_agent);
 
-    return size_t(final_address-initial_address);
+  return size_t(final_address-initial_address);
 
 }
 
+size_t
+FootbotRelay::ToBaseStation(uint8_t identifier,char* data_to_basestation_ptr)
+{
+  long unsigned int initial_address =  (long unsigned int)&(*data_to_basestation_ptr);
+  printf("Creating message to send data to base station\n");
+
+  //char identifier = 'x';
+  memcpy(data_to_basestation_ptr, &identifier, sizeof(identifier));
+  data_to_basestation_ptr = data_to_basestation_ptr + sizeof(identifier);
+  printf("Identifier data to base station %d\n", identifier);
+
+
+  uint8_t relay_id = m_myID;
+  memcpy(data_to_basestation_ptr, &relay_id, sizeof(relay_id));
+  data_to_basestation_ptr = data_to_basestation_ptr + sizeof(relay_id);
+  printf("Relay Id %d\n", relay_id);
+
+  if(stateData.collected_data_size > 0)
+  {
+    uint8_t id = agentData.id;
+    memcpy(data_to_basestation_ptr, &id, sizeof(id));
+    data_to_basestation_ptr = data_to_basestation_ptr + sizeof(id);
+    printf("Agent Id:  %d\n", id);
+
+    uint64_t time_last_data_collected = agentData.transmitted_data_time;
+    memcpy(data_to_basestation_ptr, &time_last_data_collected, sizeof(time_last_data_collected));
+    data_to_basestation_ptr = data_to_basestation_ptr + sizeof(time_last_data_collected);
+    printf("Time Message Sent:  %d\n", time_last_data_collected);
+
+    uint32_t agent_message_size = agentData.transmitted_data_size;
+    memcpy(data_to_basestation_ptr, &agent_message_size, sizeof(agent_message_size));
+    data_to_basestation_ptr = data_to_basestation_ptr + sizeof(agent_message_size);
+    printf("Agent Message Size:  %d\n", agent_message_size);
+
+  }
+  
+  long unsigned int final_address =  (long unsigned int)&(*data_to_basestation_ptr);
+  uint32_t data_to_BS_size = (final_address-initial_address); 
+  
+  /// 8.Message size (4)
+  memcpy(data_to_basestation_ptr, &data_to_BS_size,sizeof(data_to_BS_size));
+  data_to_basestation_ptr = data_to_basestation_ptr + sizeof(data_to_BS_size);
+  data_to_BS_size = data_to_BS_size + sizeof(data_to_BS_size);
+  
+  printf("%d message_size \n", data_to_BS_size);
+  stateData.IsDataSentToBaseStation = true;
+  return size_t(data_to_BS_size);
+}
 
 void 
 FootbotRelay::ParseAgentProfile(vector<char> &incoming_agent_message)
 {
   	char* agent_mes_ptr = (char*)&incoming_agent_message[0];
   	
-  	
-
-  	DEBUGCOMM("parsing agent message\n");
+  //	printf("parsing agent message\n");
   
   	uint8_t mes_type = (uint8_t)agent_mes_ptr[0];
   	agent_mes_ptr = agent_mes_ptr + sizeof(mes_type);
 
     //neighbour_count = neighbour_count + 1;
     
-	DEBUGCOMM("profile message from agent\n");
+	 //printf("profile message from agent\n");
   	
   	// Agent id
   	agentData.id = (uint8_t)agent_mes_ptr[0];
   	agent_mes_ptr = agent_mes_ptr + sizeof(agentData.id);
-  	DEBUGCOMM("agent id %d\n",agentData.id);
+  	//printf("agent id %d\n",agentData.id);
     
     // Time when message is sent
    
     memcpy(&agentData.time_last_visited, agent_mes_ptr, sizeof(agentData.time_last_visited));
-    DEBUGCOMM("time sent %u\n",agentData.time_last_visited);
+   // printf("time sent %u\n",agentData.time_last_visited);
     agent_mes_ptr+=sizeof(agentData.time_last_visited);
 
     // Agent pos
@@ -385,23 +347,23 @@ FootbotRelay::ParseAgentProfile(vector<char> &incoming_agent_message)
     memcpy(&agentData.current_location.y, agent_mes_ptr, sizeof(agentData.current_location.y));
     agent_mes_ptr+= sizeof(agentData.current_location.y);
     
-    DEBUGCOMM("Agent Position %f %f \n", agentData.current_location.x, agentData.current_location.y);
+    printf("Agent Position %f %f \n", agentData.current_location.x, agentData.current_location.y);
 
 
     // last time when hte data is transmitted
     memcpy(&agentData.time_last_data_collected,agent_mes_ptr,sizeof(agentData.time_last_data_collected));
     agent_mes_ptr+= sizeof(agentData.time_last_data_collected);
-    DEBUGCOMM("LAST DATA transmitted %u\n",agentData.time_last_data_collected);
+    //printf("LAST DATA transmitted %u\n",agentData.time_last_data_collected);
 
     // number of neighbours
    /* agent_message.number_neighbors = (uint8_t)agent_mes_ptr[0];
     agent_mes_ptr = agent_mes_ptr+ sizeof(agent_message.number_neighbors);
-    //DEBUGCOMM("number of neighbours for agent %d\n",agent_message.number_neighbors);
+    //printf("number of neighbours for agent %d\n",agent_message.number_neighbors);
   
 	 //timestep
     memcpy(&agent_message.timestep, agent_mes_ptr, sizeof(agent_message.timestep));
     agent_mes_ptr = agent_mes_ptr + sizeof(agent_message.timestep);
-    //DEBUGCOMM("timestep %d\n", agent_message.timestep);
+    //printf("timestep %d\n", agent_message.timestep);
      */
     // future position
     agentData.goal_location.x = 0.0;
@@ -409,25 +371,30 @@ FootbotRelay::ParseAgentProfile(vector<char> &incoming_agent_message)
 
     memcpy(&agentData.goal_location.x, agent_mes_ptr, sizeof(agentData.goal_location.x));
     agent_mes_ptr = agent_mes_ptr + sizeof(agentData.goal_location.x);
-    DEBUGCOMM("target X %f\n", agentData.goal_location.x);
+    printf("target X %f\n", agentData.goal_location.x);
 
     memcpy(&agentData.goal_location.y, agent_mes_ptr, sizeof(agentData.goal_location.y));
     agent_mes_ptr = agent_mes_ptr + sizeof(agentData.goal_location.y);
-    DEBUGCOMM("target Y %f\n", agentData.goal_location.y);
+    printf("target Y %f\n", agentData.goal_location.y);
     agentData.IsGoalSet = true;
 
     // amount of data available from the agent
     memcpy(&agentData.data_available, agent_mes_ptr, sizeof(agentData.data_available));
     agent_mes_ptr = agent_mes_ptr + sizeof(agentData.data_available);
-    DEBUGCOMM("Amount of data available %lu\n", agentData.data_available);
+    printf("Amount of data available %lu\n", agentData.data_available);
     
     uint32_t message_size;
   	memcpy(&message_size, agent_mes_ptr, sizeof(message_size));
     agent_mes_ptr = agent_mes_ptr+sizeof(message_size);
-    DEBUGCOMM("message_size %d\n",message_size);
+    //printf("message_size %d\n",message_size);
 
-    stateData.IsAgentDetected = true;
-    DEBUGCOMM("done parsing agent message\n");
+    if(agentData.data_available > 0)
+    {
+       stateData.IsAgentDetected = true;
+    }
+    
+    timeStepToMeet.data_file << m_Steps << "," << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
+    printf("done parsing agent message\n");
 }
 
 void 
@@ -446,13 +413,14 @@ FootbotRelay::ParseAgentCollectedData(vector<char> &incoming_agent_message)
     agent_mes_ptr = agent_mes_ptr + sizeof(agentData.transmitted_data_time);
 
 	//neighbour_count = neighbour_count + 1;
-  	DEBUGCOMM("Received data from agents\n");
+  	printf("Received data from agents\n");
       /// Receiving and storing data
   	 
   	memcpy(&agentData.transmitted_data_size,agent_mes_ptr,sizeof(agentData.transmitted_data_size));
   	agent_mes_ptr = agent_mes_ptr + sizeof(agentData.transmitted_data_size);
   	
-  	DEBUGCOMM("Relay knows the size of data: %d sent \n",(agentData.transmitted_data_size));
+    agentData.IsDataReceived = true;
+  	printf("Relay knows the size of data: %d sent \n",(agentData.transmitted_data_size));
 }
 
 void 
@@ -480,13 +448,17 @@ FootbotRelay::ParseMessage(vector<char> &incoming_agent_message, uint8_t receive
 
 void
 FootbotRelay::SendData(uint8_t send_data_id, uint8_t id)
-{
-	switch(send_data_id) {
+{ 
+  std::ostringstream str_tmp(ostringstream::out);
+  str_tmp << "fb_" << id;
+  string str_Dest = str_tmp.str();
+	
+  switch(send_data_id) {
       
       case SStateData::RELAY_HELLO_TO_AGENT: {
          
          char agent_socket_msg[20];
-       	 size_t mes_size =  HelloToAgent(agent_socket_msg);
+       	 size_t mes_size =  HelloToAgent(send_data_id,agent_socket_msg);
          m_pcWifiActuator->SendBinaryMessageTo_Extern("-1",agent_socket_msg,mes_size);
          break;
       }
@@ -494,21 +466,22 @@ FootbotRelay::SendData(uint8_t send_data_id, uint8_t id)
       case SStateData::RELAY_SENDING_ACCEPTANCE_TO_AGENT: {
          
          char agent_data_msg[20];
-         size_t mes_size = AcceptanceToAgent(agent_data_msg); 
+         size_t mes_size = AcceptanceToAgent(send_data_id,agent_data_msg); 
 
-         std::ostringstream str_tmp(ostringstream::out);
-		     str_tmp << "fb_" << id;
-		     string str_Dest = str_tmp.str();
-		     m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),agent_data_msg,mes_size);
-
+         m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),agent_data_msg,mes_size);
          break;
       }
       case SStateData::RELAY_TO_BASESTATION: {
-         //ToBaseStation(); 
-         break;
+         
+         char base_socket_msg[MAX_UDP_SOCKET_BUFFER_SIZE*2];
+         size_t collected_data_size = ToBaseStation(send_data_id,base_socket_msg); 
+
+          cout << "Base Station Target " << str_Dest << endl;
+          m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),base_socket_msg,collected_data_size);
+          break;
       }
       /*case SStateData::RELAY_TO_RELAY: {
-         Return(); 
+         InformationToRelay(); 
          break;
       }*/
       default: {
@@ -520,8 +493,8 @@ FootbotRelay::SendData(uint8_t send_data_id, uint8_t id)
 void
 FootbotRelay::UpdateState()
 {	
-	DEBUGCOMM("In relay state %d\n", stateData.SentData);
-	if(m_Steps%10 == 0)
+	printf("In relay state %d\n", stateData.SentData);
+	if(m_Steps%10 == 0 && not(stateData.MovingToBaseStation))
 	{   
 		stateData.SentData = SStateData::RELAY_HELLO_TO_AGENT;
 		SendData(stateData.SentData, 0);
@@ -529,18 +502,42 @@ FootbotRelay::UpdateState()
 
 	/*if(search_time >= stateData.time_for_each_agent)
 	{   
-		DEBUGCOMM("time_for_each_agent exceeded \n");
+		printf("time_for_each_agent exceeded \n");
 		m_navClient->stop();
 	}*/
 
 	if(stateData.IsAgentDetected)
 	{ 
-    DEBUGCOMM("Agent Detected \n");
+    printf("Agent Detected \n");
 		stateData.State = SStateData::STATE_DATA_GATHERING;
+    stateData.IsGoalSet = false;
 		//spiralData->sequence = 0;
 		search_time = 0;
-		stateData.SearchState = SStateData::To_AGENT;
+		
 	}
+  else
+  {
+    if(agentData.IsDataReceived)
+    { 
+      initialiseDataGather = true;
+      stateData.State = SStateData::STATE_RETURN_TO_BASESTATION;
+      printf("I am in state base station \n");
+      stateData.IsGoalSet = false;
+      agentData.IsDataReceived = false;
+    }
+
+    else if(not stateData.MovingToBaseStation)
+    { 
+      printf("I am fucking here \n");
+      stateData.State = SStateData::STATE_SEARCH;
+      if(initialiseSearchState)
+      {
+        stateData.SearchState = SStateData::To_AGENT;
+        initialiseReturnState = true;
+        initialiseSearchState = false;
+      }
+    }
+  }
 }
 
 void 
@@ -553,10 +550,12 @@ FootbotRelay::ControlStep()
   }
 	UpdateState();
 
-    DEBUGCOMM("Position %f %f\n", m_navClient->currentPosition().GetX(), m_navClient->currentPosition().GetY());
+    printf("Position %f %f\n", m_navClient->currentPosition().GetX(), m_navClient->currentPosition().GetY());
+    printf("Agent State %d \n", stateData.State);
 	
 	switch(stateData.State) {
       case SStateData::STATE_SEARCH: {
+         printf("IN SEARCH STATE \n");
          Search();
          break;
       }
@@ -565,11 +564,13 @@ FootbotRelay::ControlStep()
          break;
       }
       case SStateData::STATE_DATA_GATHERING: {
+         printf("IN DataGather STATE \n");
          DataGather(); // Check argos2-footbot to decide when the relay should communicate
          break;
       }
       case SStateData::STATE_RETURN_TO_BASESTATION: {
-         //Return(); // Once Reached BS send collected data
+         printf("IN Return STATE \n");
+         Return(); // Once Reached BS send collected data
          break;
       }
       default: {
@@ -579,15 +580,15 @@ FootbotRelay::ControlStep()
 
     /********  Receive messages to and from mission agents ********/
 	
-   	TMessageList message_from_agents;
+  TMessageList message_from_agents;
 	m_pcWifiSensor->GetReceivedMessages_Extern(message_from_agents);
 	for(TMessageList::iterator it = message_from_agents.begin(); it!=message_from_agents.end();it++)
 	{   
 		//send_message_to_relay = true;
-		DEBUGCOMM("Received %lu bytes to incoming buffer\n", it->Payload.size());
+		printf("Received %lu bytes to incoming buffer\n", it->Payload.size());
 
 		vector<char> check_message = it->Payload;
-		DEBUGCOMM("Identifier of received message [extern] %c\n",char(check_message[0]));
+		printf("Identifier of received message [extern] %c\n",uint8_t(check_message[0]));
 		ParseMessage(it->Payload, uint8_t(check_message[0]));
 		string sender = it->Sender;
 		/*if((char)check_message[0] == 'a')
@@ -622,23 +623,94 @@ FootbotRelay::DataGather()
 	//send the acceptance to collect data after checking the available data size.
 	// move towards agent's current location Potential field -- agent should attract until it sends data and once data is sent agent should repel
 	stateData.SentData = SStateData::RELAY_SENDING_ACCEPTANCE_TO_AGENT;
-	SendData(stateData.SentData, agentData.id);
-	DEBUGCOMM("Received gathered data \n");
-  stateData.IsAgentDetected = false;
-	stateData.State = SStateData::STATE_SEARCH;
+  
+  if(initialiseDataGather)
+  {  
+    SendData(stateData.SentData, agentData.id);
+    if(not stateData.IsGoalSet)
+    { 
+      printf("Agent Location set as target\n");
+      CVector3 targetPos(agentData.current_location.x,agentData.current_location.y,0.0);
+      m_navClient->setTargetPosition(targetPos);
+      stateData.IsGoalSet = true;
+      initialiseDataGather = false;
+    }
+  }
+  
+  if(m_navClient->state() == target_state)
+  {  
+     printf("Reached Agent Location\n");
+     stateData.collected_data_size = stateData.collected_data_size + agentData.data_available;
+     agentData.data_available = 0;
+     stateData.MovingToBaseStation = true;
+     stateData.IsGoalSet = false;
+     stateData.IsAgentDetected = false;
+  }
+  printf("Received gathered data \n");
+}
+
+void
+FootbotRelay::Return()
+{   
+    // initialising Return State -> set target position as position of one of the base station
+
+    Position base_loc = stateData.base_station[1];
+
+    if(initialiseReturnState)
+    {
+      
+      printf("Target set to base location\n");
+      CVector3 targetPos(base_loc.x,base_loc.y,0.0);
+      m_navClient->setTargetPosition(targetPos);
+      stateData.IsGoalSet = true;
+      initialiseReturnState = false;
+    }
+    
+
+    Position currentL;
+    currentL.x = m_navClient->currentPosition().GetX();
+    currentL.y = m_navClient->currentPosition().GetY();
+
+    double dist = spiral.findDistance(&base_loc, &currentL);
+    printf("Distance: %f \n", dist);
+    printf("Navigation state of agent %d\n", m_navClient->state());
+
+    
+    if(stateData.IsGoalSet && dist <= 0.35) // if an object is stationary(Base Station) at that target location, it doesn't go beyond 0.28.0.35
+    {
+         // send data once reached base Station
+        printf("Reached Base Station\n");
+        stateData.SentData = SStateData::RELAY_TO_BASESTATION;
+        SendData(stateData.SentData,1);
+        m_navClient->stop();
+        stateData.IsGoalSet = false;
+    }
+      
+    
+    else if(stateData.IsDataSentToBaseStation)
+    {  
+       printf("Data Sent to Base Station\n");
+       m_navClient->start();
+       stateData.State = SStateData::STATE_SEARCH;
+       stateData.IsDataSentToBaseStation = false;
+       stateData.MovingToBaseStation = false;
+       initialiseSearchState = true;
+    }
+    
+    //if(not stateData.IsGoalSet)
 }
 
 void
 FootbotRelay::Search()
 { 
   search_time ++;
-  DEBUGCOMM("Searching in mode %d \n", stateData.SearchState);
+  printf("Searching in mode %d \n", stateData.SearchState);
   
   if(stateData.IsGoalSet)
   {
   if(m_navClient->state() == target_state)
 	  { 
-      DEBUGCOMM("Reached target %f, %f", m_navClient->currentPosition().GetX(), m_navClient->currentPosition().GetY());
+      printf("Reached target %f, %f", m_navClient->currentPosition().GetX(), m_navClient->currentPosition().GetY());
 	  	if(stateData.SearchState == SStateData::To_AGENT)
 	  	{
 	  		stateData.SearchState = SStateData::SPIRAL;
@@ -647,7 +719,7 @@ FootbotRelay::Search()
         printf("condition %d\n", spiralData->spiralCondition);
         for(int i =0 ;i< 4 ; i++)
         {
-          printf("direction : %s\n",spiralData->possibleDirections[i]);
+          printf("direction : %d\n",spiralData->possibleDirections[i]);
         }
 	  	}
 	    stateData.IsGoalSet = false;
@@ -660,7 +732,7 @@ FootbotRelay::Search()
       
 			if(not agentData.IsGoalSet)
 			{ 
-        DEBUGCOMM("agent current_location %f  %f \n", agentData.current_location.x,agentData.current_location.y);
+        printf("agent current_location %f  %f \n", agentData.current_location.x,agentData.current_location.y);
 				CVector3 targetPos(agentData.current_location.x,agentData.current_location.y,0.0);
 				m_navClient->setTargetPosition(targetPos);
 				startPos.x = targetPos[0];
@@ -668,7 +740,7 @@ FootbotRelay::Search()
 			}
 			else if(agentData.IsGoalSet)
 			{
-        DEBUGCOMM("agent goal_location %f  %f \n", agentData.goal_location.x,agentData.goal_location.y);
+        printf("agent goal_location %f  %f \n", agentData.goal_location.x,agentData.goal_location.y);
 				CVector3 targetPos(agentData.goal_location.x,agentData.goal_location.y,0.0);
 				m_navClient->setTargetPosition(targetPos);
 				agentData.IsGoalSet = false;
@@ -701,7 +773,7 @@ FootbotRelay::Search()
         }
         
         CVector3 targetPos(spiralData->spiralPos.x,spiralData->spiralPos.y,0.0);
-        DEBUGCOMM("Pos by spiral %f %f \n", targetPos[0], targetPos[1]);
+        printf("Pos by spiral %f %f \n", targetPos[0], targetPos[1]);
         m_navClient->setTargetPosition(targetPos);
         stateData.IsGoalSet = true;
 	  }
