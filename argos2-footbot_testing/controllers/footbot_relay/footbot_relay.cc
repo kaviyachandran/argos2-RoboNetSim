@@ -61,6 +61,7 @@ FootbotRelay::SAgentData::SAgentData()
 {
 	IsGoalSet = false;
   IsDataReceived = false;
+  delay_time = 0;
 }
 
 void
@@ -202,6 +203,9 @@ FootbotRelay::Init(TConfigurationNode& t_node)
  // Records the time and position at which a relay meets the agent
   timeStepToMeet.filename = "timestep"+ to_string(m_myID)+".csv";
   timeStepToMeet.data_file.open(timeStepToMeet.filename, ios::out | ios::ate);
+
+  delayTime.filename = "delayTime"+ to_string(m_myID)+".csv";
+  delayTime.data_file.open(delayTime.filename, ios::out | ios::ate);
    
 }
 
@@ -229,20 +233,27 @@ FootbotRelay::HelloToAgent(uint8_t identifier, char* out_to_agent)
 	/*** This message is sent to detect agent in range ***/
 
 	long unsigned int initial_address =  (long unsigned int)&(*out_to_agent);
-  
-   	/// identifier - 0 relay to agent hello message 
-    //uint8_t identifier = 0; 
-    printf("Size of character %d\n", sizeof(identifier));
-    memcpy(out_to_agent,&identifier,sizeof(identifier));
-    out_to_agent = out_to_agent + sizeof(identifier);
-    
-    uint8_t id = (uint8_t)m_myID;
-    memcpy(out_to_agent,&id,sizeof(id));
-    out_to_agent = out_to_agent + sizeof(id);
-    
-    long unsigned int final_address = (long unsigned int)&(*out_to_agent);
-    return size_t(final_address-initial_address);
-	
+  long unsigned int final_address;
+    try
+    {
+     	/// identifier - 0 relay to agent hello message 
+      //uint8_t identifier = 0; 
+      printf("Size of character %d\n", sizeof(identifier));
+      memcpy(out_to_agent,&identifier,sizeof(identifier));
+      out_to_agent = out_to_agent + sizeof(identifier);
+      
+      uint8_t id = (uint8_t)m_myID;
+      memcpy(out_to_agent,&id,sizeof(id));
+      out_to_agent = out_to_agent + sizeof(id);
+      
+      final_address = (long unsigned int)&(*out_to_agent);
+      
+    }
+    catch(exception& e)
+    {
+      printf("Exception: %s\n",e.what());
+    }
+	return size_t(final_address-initial_address);
 }
 
 size_t 
@@ -312,6 +323,11 @@ FootbotRelay::ToBaseStation(uint8_t identifier,char* data_to_basestation_ptr)
   
   printf("%d message_size \n", data_to_BS_size);
   stateData.IsDataSentToBaseStation = true;
+  
+  agentData.delay_time = m_Steps-agentData.transmitted_data_time;
+  printf("Delay Time: %d\n", agentData.delay_time);
+  delayTime.data_file << agentData.id << "," << agentData.delay_time << "\n";
+
   return size_t(data_to_BS_size);
 }
 
@@ -393,7 +409,7 @@ FootbotRelay::ParseAgentProfile(vector<char> &incoming_agent_message)
        stateData.IsAgentDetected = true;
     }
     
-    timeStepToMeet.data_file << m_Steps << "," << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY() << "\n";
+    timeStepToMeet.data_file << m_Steps << "," << m_navClient->currentPosition().GetX() << "," << m_navClient->currentPosition().GetY()<< "," << "\n" ;
     printf("done parsing agent message\n");
 }
 
@@ -476,7 +492,7 @@ FootbotRelay::SendData(uint8_t send_data_id, uint8_t id)
          char base_socket_msg[MAX_UDP_SOCKET_BUFFER_SIZE*2];
          size_t collected_data_size = ToBaseStation(send_data_id,base_socket_msg); 
 
-          cout << "Base Station Target " << str_Dest << endl;
+          printf("Base Station Target %s \n", str_Dest.c_str());
           m_pcWifiActuator->SendBinaryMessageTo_Extern(str_Dest.c_str(),base_socket_msg,collected_data_size);
           break;
       }
@@ -497,7 +513,13 @@ FootbotRelay::UpdateState()
 	if(m_Steps%10 == 0 && not(stateData.MovingToBaseStation))
 	{   
 		stateData.SentData = SStateData::RELAY_HELLO_TO_AGENT;
-		SendData(stateData.SentData, 0);
+    try{
+      SendData(stateData.SentData, 0);
+    }
+		catch(exception& e)
+    {
+      printf("%s\n",e.what());
+    }
 	}
 
 	/*if(search_time >= stateData.time_for_each_agent)
@@ -528,7 +550,7 @@ FootbotRelay::UpdateState()
 
     else if(not stateData.MovingToBaseStation)
     { 
-      printf("I am fucking here \n");
+      
       stateData.State = SStateData::STATE_SEARCH;
       if(initialiseSearchState)
       {
@@ -676,7 +698,7 @@ FootbotRelay::Return()
     printf("Navigation state of agent %d\n", m_navClient->state());
 
     
-    if(stateData.IsGoalSet && dist <= 0.35) // if an object is stationary(Base Station) at that target location, it doesn't go beyond 0.28.0.35
+    if(stateData.IsGoalSet && dist <= 0.40) // if an object is stationary(Base Station) at that target location, it doesn't go beyond 0.28.0.35
     {
          // send data once reached base Station
         printf("Reached Base Station\n");

@@ -85,15 +85,15 @@ FootbotMissionAgents::Init(TConfigurationNode& t_node)
   stateData.goal_loc.x = temp_goal[0];
   stateData.goal_loc.y = temp_goal[1];
 
-  stateData.ttl = 2*getTimeLimit(4.5,4.5); // time taken to cover two times the length of diagonal
+  stateData.ttl = 2500; // time taken to cover two times the length of diagonal
   DEBUGCOMM("time for a data packet%d \n",stateData.ttl);
   stateData.id = (uint8_t) m_myID;
 
   agentPositions.filename = "position" + to_string(m_myID)+".csv";
   agentPositions.data_file.open(agentPositions.filename, ios::out | ios::ate);
 
-  goalPositions.filename = "goal" + to_string(m_myID)+".csv";
-  goalPositions.data_file.open(goalPositions.filename, ios::out | ios::ate);
+  dataInformation.filename = "data" + to_string(m_myID)+".csv";
+  dataInformation.data_file.open(dataInformation.filename, ios::out | ios::ate);
 }
 
 uint32_t 
@@ -339,11 +339,12 @@ FootbotMissionAgents::SendCollectedData(char* data_ptr,uint8_t type_of_message,u
   
   //DEBUGCOMM("sending %d bytes to relay %s in range\n", data_size,str_Dest.c_str());
   //generated_data_info << m_Steps << "," << fake_data.size() << "," << relay_id << "\n";
-  
+  dataInformation.data_file << stateData.data_generated.size() << "," <<  stateData.discarded_data_count << "\n";
   
   // time last data transmitted
   //m_lastTxTime = getTime();
   stateData.data_generated.clear();
+  stateData.discarded_data_count = 0;
   //fake_data.clear();
   return size_t(data_size);
 }
@@ -439,7 +440,7 @@ FootbotMissionAgents::generateData()
    stateData.data_generated.push_back(temp_data);
    DEBUGCOMM("Generating Data after insertion %d \n", stateData.data_generated.size());
    
-   if(stateData.data_generated.size() == stateData.ttl)
+   if(stateData.data_generated.size() > stateData.ttl)
    { 
      stateData.data_generated.pop_front();
      stateData.discarded_data_count++;
@@ -511,7 +512,7 @@ FootbotMissionAgents::Rest()
     CVector3 temp_goal = randomWaypoint();
     stateData.goal_loc.x = temp_goal[0];
     stateData.goal_loc.y = temp_goal[1];
-    goalPositions.data_file << stateData.goal_loc.x << "," << stateData.goal_loc.y << "\n";
+    //goalPositions.data_file << stateData.goal_loc.x << "," << stateData.goal_loc.y << "\n";
     DEBUGCOMM("waiting 0 state %d\n", stateData.State);
     m_navClient->start();
     m_navClient->setTargetPosition( temp_goal );

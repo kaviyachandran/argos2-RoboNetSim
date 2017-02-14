@@ -37,3 +37,23 @@ time for each agent = [time limit - time taken to cover the diagonal(this is don
 
  Data Gather -> Return ------- When data is gathered from agent
  Return -> State Search ----- Once data is transferred to Base Station
+
+ Experiment 1:
+
+ 10 runs with BS Pos = -4.3,-4.3
+ Agent : x="2.0" y="-4.0"
+
+ Experiment 2:
+
+ 10 runs with BS Pos = 0,0
+ Agent : x="2.0" y="-4.0"
+
+
+ import pickle
+
+with open('outfile', 'wb') as fp:
+    pickle.dump(itemlist, fp)
+To read it back:
+
+with open ('outfile', 'rb') as fp:
+    itemlist = pickle.load(fp)

@@ -28,6 +28,7 @@
 #include <iterator>   
 #include <random>
 #include <deque>
+#include <exception>
 
 #include <spiralPattern.h>
 
@@ -74,6 +75,9 @@ class FootbotRelay: public CCI_Controller
         /*** Details of data transmitted ***/
         uint64_t transmitted_data_time;
         uint32_t transmitted_data_size;
+
+        // Time between data collected and 
+        uint64_t delay_time;
 
         bool IsGoalSet;
         bool IsAgentStatusAvailable;
@@ -237,6 +241,8 @@ public:
     
     dataWrite relayPositions;
     dataWrite timeStepToMeet;
+    dataWrite delayTime;
+
 };
 
 #endif

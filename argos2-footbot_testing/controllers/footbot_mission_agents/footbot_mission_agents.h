@@ -151,7 +151,7 @@ class FootbotMissionAgents: public CCI_Controller
     void ParseRelayAcceptance(vector<char> &incoming_agent_message);
     
     dataWrite agentPositions;
-    dataWrite goalPositions;
+    dataWrite dataInformation;
     // ParseNeighborData
     size_t SendProfileData(char* ptr, uint8_t id, uint8_t relay_id);
     size_t SendCollectedData(char* ptr, uint8_t id, uint8_t relay_id);
