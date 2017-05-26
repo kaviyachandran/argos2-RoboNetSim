@@ -57,3 +57,25 @@ To read it back:
 
 with open ('outfile', 'rb') as fp:
     itemlist = pickle.load(fp)
+
+
+check distance calculated in spiral.cpp
+
+Command to execute eigen files :
+g++ -std=c++11 -I/usr/include/eigen3 first_eigen.cpp -o my_exec
+
+Random Number:
+
+srand(time(0));
+int r = rand() % (20 - 10) + 10;
+If you want to include 20 in the range then this is a range of 11 numbers:
+
+int r = rand() % (21 - 10) + 10
+
+
+Probability of either one of the random events occurring : 
+
+P(A or B) = P(A) + P(B) - P(A intersection B) (Remember the venn diagram)
+
+Sum(d_mat) = 1 
+but b_vector =/ 1
